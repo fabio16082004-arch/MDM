@@ -43,10 +43,24 @@ def main():
                               num_frames=args.num_frames, 
                               fixed_len=args.pred_len + args.context_len, 
                               pred_len=args.pred_len,
-                              device=dist_util.dev(),)
+                              device=dist_util.dev(),
+                              split='train',
+                              step_index_path=args.step_index,
+                              mean_std_dir='dataset/HumanML3D')
 
+    x = next(iter((data)))
+    print(x)
     print("creating model and diffusion...")
     model, diffusion = create_model_and_diffusion(args, data)
+
+    if hasattr(args, 'fine_tune_path') and args.fine_tune_path != "" and args.fine_tune_path is not None:
+        print(f"Loading pretrained weights for fine-tuning from: {args.fine_tune_path}")
+        pretrained_state_dict = torch.load(args.fine_tune_path, map_location='cpu')
+        
+        if 'model' in pretrained_state_dict:
+            pretrained_state_dict = pretrained_state_dict['model']
+            
+        model.load_state_dict(pretrained_state_dict, strict = False)
     model.to(dist_util.dev())
     model.rot2xyz.smpl_model.eval()
 

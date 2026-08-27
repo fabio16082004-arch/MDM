@@ -18,6 +18,8 @@ class BERT(nn.Module):
         logging.set_verbosity_error()
         # Tokenizer
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+        print("🔥 USING TEXT MODEL PATH:", modelpath)
         # Tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(modelpath)
         # Text model

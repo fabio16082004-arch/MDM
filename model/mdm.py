@@ -123,8 +123,9 @@ class MDM(nn.Module):
                 else:
                     raise ValueError('We only support [CLIP, BERT] text encoders') 
                 
-                self.embed_text = nn.Linear(self.clip_dim, self.latent_dim)
-                
+                self.embed_text = nn.Linear(self.clip_dim, self.latent_dim) #######TODO Prende il vettore numerico prodotto dal tuo encoder testuale e lo "trasforma" in un altro vettore di dimensione diversa, applicando una trasformazione lineare
+        ##############
+             
             if 'action' in self.cond_mode:
                 self.embed_action = EmbedAction(self.num_actions, self.latent_dim)
                 print('EMBED ACTION')
@@ -140,8 +141,10 @@ class MDM(nn.Module):
     def load_and_freeze_clip(self, clip_version):
         clip_model, clip_preprocess = clip.load(clip_version, device='cpu',
                                                 jit=False)  # Must set jit=False for training
-        clip.model.convert_weights(
-            clip_model)  # Actually this line is unnecessary since clip by default already on float16
+
+        clip_model = clip_model.float()
+        #clip.model.convert_weights(
+        #    clip_model)  # Actually this line is unnecessary since clip by default already on float16
 
         # Freeze CLIP weights
         clip_model.eval()
@@ -237,7 +240,6 @@ class MDM(nn.Module):
 
         x = self.input_process(x)
 
-        # TODO - move to collate
         frames_mask = None
         is_valid_mask = y['mask'].shape[-1] > 1  # Don't use mask with the generate script
         if self.mask_frames and is_valid_mask:

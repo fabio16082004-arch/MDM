@@ -92,3 +92,24 @@ def t2m_prefix_collate(batch, pred_len):
     } for b in batch]
     return collate(adapted_batch)
 
+def custom_dataset_collate(batch, target_len=None):
+    adapted_batch = []
+
+    for b in batch:
+        motion = b[0]  # tensor (T, D)
+        real_len = motion.shape[0]
+        if target_len is not None:
+            if real_len >= target_len:
+                motion = motion[:target_len]
+                real_len = target_len
+            else:
+                pad = motion.new_zeros(target_len - real_len, motion.shape[1])
+                motion = torch.cat([motion, pad], dim=0)
+        adapted_batch.append({
+            'inp': motion.T.unsqueeze(1),
+            'text': b[1],
+            'lengths': real_len,
+        })
+
+    return collate(adapted_batch)
+

@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step-Walk Dataset Viewer</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2b303b;
+    --fg:#e6e9ef; --muted:#8b93a7; --accent:#5b9dff; --warn:#ffb547; --bad:#ff6b6b; --ok:#4ec9a0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);
+         padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  h1{font-size:15px;margin:0 12px 0 0;font-weight:600;letter-spacing:.2px}
+  select,input,button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+        border-radius:6px;padding:6px 9px;font-size:13px;font-family:inherit}
+  input[type=search]{min-width:230px}
+  button{cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.on{background:var(--accent);border-color:var(--accent);color:#08111f;font-weight:600}
+  label.chk{display:inline-flex;align-items:center;gap:5px;color:var(--muted);cursor:pointer;user-select:none}
+  .spacer{flex:1}
+  .count{color:var(--muted);font-variant-numeric:tabular-nums}
+
+  #stats{padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line);display:none}
+  #stats.open{display:block}
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+  .tile{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .tile .k{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+  .tile .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+  .tile .s{color:var(--muted);font-size:11px}
+  table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:13px}
+  th,td{padding:5px 9px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  .barcell{position:relative}
+  .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(91,157,255,.16)}
+  .bar span{position:relative}
+
+  #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;padding:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden;
+        display:flex;flex-direction:column}
+  .card.leak{border-color:var(--bad)}
+  .card.dup{border-color:var(--warn)}
+  .card video{width:100%;aspect-ratio:1/1;background:#000;display:block;object-fit:contain}
+  .nomedia{width:100%;aspect-ratio:1/1;background:#000;display:flex;align-items:center;
+           justify-content:center;color:var(--muted);font-size:12px}
+  .card .body{padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+  .cap{font-size:12.5px;line-height:1.35}
+  .name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--muted);
+        word-break:break-all}
+  .tags{display:flex;flex-wrap:wrap;gap:4px}
+  .tag{font-size:10px;padding:1.5px 6px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+  .tag.cls{color:var(--accent);border-color:rgba(91,157,255,.45)}
+  .tag.dur{color:var(--fg)}
+  .tag.path{color:#8b93a7;border-color:var(--line)}
+  .tag.foot{color:#c9a6ff;border-color:rgba(201,166,255,.45);font-weight:600}
+  .tag.fall{color:#8b93a7;border-color:var(--line)}
+  .tag.fall .skate{color:var(--warn)}
+  .tag.split{color:var(--ok);border-color:rgba(78,201,160,.45)}
+  .tag.dup{color:var(--warn);border-color:rgba(255,181,71,.5)}
+  .tag.leak{color:var(--bad);border-color:rgba(255,107,107,.5)}
+  #more{display:block;margin:0 auto 40px;padding:9px 22px}
+  .empty{padding:60px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Step-Walk Dataset Viewer</h1>
+  <select id="ds"></select>
+  <select id="cls"><option value="">tutte le classi</option></select>
+  <select id="split"><option value="">tutti gli split</option></select>
+  <select id="origin">
+    <option value="">tutte le origini</option>
+    <option value="orig">orig (clip intero)</option>
+    <option value="cut">cut (ritaglio)</option>
+    <option value="gen">gen (aumentato)</option>
+    <option value="aug">aug (aumentato)</option>
+  </select>
+  <input type="search" id="q" placeholder="cerca nella caption o nel nome…">
+  <select id="sort">
+    <option value="name">ordina: nome</option>
+    <option value="dur">ordina: durata ↑</option>
+    <option value="dur-">ordina: durata ↓</option>
+    <option value="foot">ordina: piedi, solo volo ↑</option>
+    <option value="foot-">ordina: piedi, solo volo ↓</option>
+    <option value="fall">ordina: piedi, tutti i frame ↑</option>
+    <option value="fall-">ordina: piedi, tutti i frame ↓</option>
+    <option value="skate-">ordina: scivolamento (skating) ↓</option>
+    <option value="path">ordina: traiettoria pelvis ↑</option>
+    <option value="path-">ordina: traiettoria pelvis ↓</option>
+    <option value="disp">ordina: spostamento netto ↑</option>
+    <option value="disp-">ordina: spostamento netto ↓</option>
+    <option value="speed">ordina: velocità pelvis ↑</option>
+    <option value="speed-">ordina: velocità pelvis ↓</option>
+    <option value="air">ordina: frazione in volo ↑</option>
+    <option value="air-">ordina: frazione in volo ↓</option>
+    <option value="cap">ordina: caption</option>
+    <option value="rand">ordina: casuale</option>
+  </select>
+  <label class="chk"><input type="checkbox" id="onlyDup"> solo duplicati</label>
+  <label class="chk"><input type="checkbox" id="onlyLeak"> solo leakage</label>
+  <label class="chk"><input type="checkbox" id="autoplay" checked> autoplay loop</label>
+  <div class="spacer"></div>
+  <span class="count" id="count"></span>
+  <button id="toggleStats">statistiche</button>
+</header>
+
+<section id="stats"></section>
+<div id="grid"></div>
+<button id="more" style="display:none">carica altri</button>
+
+<script>
+const PAGE = 60;
+let DS = {}, samples = [], filtered = [], shown = 0, current = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => (s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function boot() {
+  DS = await (await fetch('/api/datasets')).json();
+  const names = Object.keys(DS);
+  $('ds').innerHTML = names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  await loadDataset(names[0]);
+
+  $('ds').onchange = e => loadDataset(e.target.value);
+  ['cls','split','origin','sort'].forEach(id => $(id).onchange = apply);
+  ['onlyDup','onlyLeak'].forEach(id => $(id).onchange = apply);
+  $('autoplay').onchange = apply;
+  let t; $('q').oninput = () => { clearTimeout(t); t = setTimeout(apply, 180); };
+  $('more').onclick = () => render(false);
+  $('toggleStats').onclick = () => {
+    $('stats').classList.toggle('open');
+    $('toggleStats').classList.toggle('on');
+  };
+}
+
+async function loadDataset(name) {
+  current = name;
+  samples = await (await fetch('/api/samples?ds=' + encodeURIComponent(name))).json();
+
+  const classes = DS[name].meta.classes;
+  $('cls').innerHTML = '<option value="">tutte le classi</option>' +
+      classes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  const splits = [...new Set(samples.map(s => s.split))].sort();
+  $('split').innerHTML = '<option value="">tutti gli split</option>' +
+      splits.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+
+  renderStats(DS[name].stats);
+  apply();
+}
+
+function apply() {
+  const cls = $('cls').value, split = $('split').value, origin = $('origin').value;
+  const q = $('q').value.trim().toLowerCase();
+  const dupOnly = $('onlyDup').checked, leakOnly = $('onlyLeak').checked;
+
+  filtered = samples.filter(s =>
+    (!cls || s.cls === cls) &&
+    (!split || s.split === split) &&
+    (!origin || s.origin === origin) &&
+    (!dupOnly || s.dup_count > 1) &&
+    (!leakOnly || s.leak) &&
+    (!q || s.caption.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
+  );
+
+  const mode = $('sort').value;
+  const by = k => (a, b) => a[k] - b[k];
+  const cmp = {
+    name:   (a, b) => a.cls.localeCompare(b.cls) || a.name.localeCompare(b.name),
+    dur:    by('frames'),   'dur-':   (a, b) => b.frames - a.frames,
+    foot:   by('foot_m'),     'foot-': (a, b) => b.foot_m - a.foot_m,
+    fall:   by('foot_all_m'), 'fall-': (a, b) => b.foot_all_m - a.foot_all_m,
+    'skate-': (a, b) => b.skate_m - a.skate_m,
+    path:   by('path_m'),   'path-':  (a, b) => b.path_m - a.path_m,
+    disp:   by('disp_m'),   'disp-':  (a, b) => b.disp_m - a.disp_m,
+    speed:  by('speed_ms'), 'speed-': (a, b) => b.speed_ms - a.speed_ms,
+    air:    by('airborne_frac'), 'air-': (a, b) => b.airborne_frac - a.airborne_frac,
+    cap:    (a, b) => a.caption.localeCompare(b.caption),
+  }[mode];
+  if (cmp) filtered.sort(cmp);
+  else filtered = filtered.map(v => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map(v => v[1]);
+
+  const tot = filtered.reduce((a, s) => a + s.seconds, 0);
+  const totF = filtered.reduce((a, s) => a + s.foot_m, 0);
+  $('count').textContent = `${filtered.length} / ${samples.length} clip · ` +
+      `${(tot / 60).toFixed(1)} min · ${totF.toFixed(0)} m di piedi`;
+  render(true);
+}
+
+function render(reset) {
+  const grid = $('grid');
+  if (reset) { grid.innerHTML = ''; shown = 0; }
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">Nessun clip con questi filtri.</div>';
+    $('more').style.display = 'none';
+    return;
+  }
+  const auto = $('autoplay').checked;
+  const slice = filtered.slice(shown, shown + PAGE);
+  grid.insertAdjacentHTML('beforeend', slice.map(s => card(s, auto)).join(''));
+  shown += slice.length;
+  $('more').style.display = shown < filtered.length ? 'block' : 'none';
+  $('more').textContent = `carica altri (${filtered.length - shown} rimanenti)`;
+}
+
+function card(s, auto) {
+  const src = s.mp4 ? `/media/${encodeURIComponent(current)}/${s.mp4.split('/').map(encodeURIComponent).join('/')}` : null;
+  const media = src
+    ? `<video src="${src}" ${auto ? 'autoplay loop muted' : 'controls'} playsinline preload="metadata"
+              onmouseenter="this.play()" title="${esc(s.name)}"></video>`
+    : '<div class="nomedia">nessun mp4</div>';
+  const cls = ['card', s.leak ? 'leak' : '', s.dup_count > 1 ? 'dup' : ''].join(' ');
+  const leakTxt = s.leak === 'exact' ? 'leak: identico a train' : 'leak: stesso clip sorgente';
+  return `<div class="${cls}">
+    ${media}
+    <div class="body">
+      <div class="cap">${esc(s.caption) || '<i style="color:var(--muted)">(nessuna caption)</i>'}</div>
+      <div class="tags">
+        <span class="tag cls">${esc(s.cls)}</span>
+        <span class="tag dur">${s.seconds.toFixed(2)}s · ${s.frames}f</span>
+        <span class="tag foot" title="metri percorsi dalle caviglie sul piano di terra, nelle sole fasi di volo (piede non appoggiato secondo i foot-contact) · sinistro ${s.foot_l_m.toFixed(2)} m / destro ${s.foot_r_m.toFixed(2)} m · ${(s.airborne_frac * 100).toFixed(0)}% dei frame con piede in volo">👣 ${s.foot_m.toFixed(2)} m</span>
+        <span class="tag fall" title="stessa misura senza usare i bit di foot-contact: somma su TUTTI i frame. La differenza (${s.skate_m.toFixed(2)} m) è lo spostamento della caviglia a piede appoggiato, cioè scivolamento">tutti i frame ${s.foot_all_m.toFixed(2)} m<span class="skate"> · skate ${s.skate_m.toFixed(2)}</span></span>
+        <span class="tag path" title="lunghezza della traiettoria del pelvis (la linea bianca a terra) · spostamento netto inizio→fine ${s.disp_m.toFixed(2)} m · rettilineità ${s.straightness.toFixed(2)}">pelvis ${s.path_m.toFixed(2)} m · ${s.speed_ms.toFixed(2)} m/s</span>
+        <span class="tag split">${esc(s.split)}</span>
+        <span class="tag">${esc(s.origin)}</span>
+        ${s.dup_count > 1 ? `<span class="tag dup" title="${esc(s.dup_with.join(', '))}">×${s.dup_count} identici</span>` : ''}
+        ${s.leak ? `<span class="tag leak">${leakTxt}</span>` : ''}
+      </div>
+      <div class="name">${esc(s.name)} · src ${esc(s.source)}</div>
+    </div>
+  </div>`;
+}
+
+function renderStats(st) {
+  const o = st.overall, d = st.duplicates, lk = st.leakage;
+  const tiles = [
+    ['clip totali', o.n, `${(o.sec_total / 60).toFixed(1)} min di motion`],
+    ['motion distinte', o.unique_motions, `${d.redundant_files} file duplicati (${(d.redundant_files / o.n * 100).toFixed(0)}%)`],
+    ['clip sorgente HumanML3D', o.unique_sources, 'dopo aver rimosso cut_/gen/aug/mirror'],
+    ['caption distinte', o.unique_captions, `${(o.unique_captions / o.n * 100).toFixed(0)}% del totale`],
+    ['durata media', o.sec_mean.toFixed(2) + 's', `mediana ${o.sec_median.toFixed(2)}s · ${o.frames_mean.toFixed(0)} frame @ ${st.meta.fps} fps`],
+    ['range durate', `${o.sec_min.toFixed(2)}–${o.sec_max.toFixed(2)}s`, `${o.frames_min}–${o.frames_max} frame`],
+    ['piedi, solo volo (media)', o.foot_mean.toFixed(2) + ' m', `mediana ${o.foot_median.toFixed(2)} m · range ${o.foot_min.toFixed(2)}–${o.foot_max.toFixed(2)} m`],
+    ['piedi, tutti i frame', o.foot_all_mean.toFixed(2) + ' m', `senza foot-contact · +${(o.foot_all_mean / o.foot_mean * 100 - 100).toFixed(0)}% rispetto al solo volo`],
+    ['scivolamento medio', o.skate_mean.toFixed(2) + ' m', `caviglia mossa a piede appoggiato · ${(o.airborne_mean * 100).toFixed(0)}% dei frame in volo`],
+    ['traiettoria pelvis (media)', o.path_mean.toFixed(2) + ' m', `mediana ${o.path_median.toFixed(2)} m · spost. netto ${o.disp_mean.toFixed(2)} m · ${o.speed_mean.toFixed(2)} m/s`],
+  ];
+  if (lk.eval_total) {
+    tiles.push(['leakage val/test',
+      `${((lk.exact + lk.same_source) / lk.eval_total * 100).toFixed(0)}%`,
+      `${lk.exact} identici + ${lk.same_source} stesso sorgente su ${lk.eval_total}`]);
+  }
+
+  const maxFoot = Math.max(...Object.values(st.per_class).map(b => b.foot_mean));
+  const rows = Object.entries(st.per_class).map(([cls, b]) => `
+    <tr>
+      <td>${esc(cls)}</td>
+      <td>${b.n}</td><td>${b.unique_motions}</td><td>${b.unique_sources}</td><td>${b.unique_captions}</td>
+      <td>${b.sec_mean.toFixed(2)}</td>
+      <td class="barcell"><div class="bar" style="width:${b.foot_mean / maxFoot * 100}%"></div>
+          <span>${b.foot_mean.toFixed(2)}</span></td>
+      <td>${b.foot_median.toFixed(2)}</td>
+      <td>±${b.foot_std.toFixed(2)}</td>
+      <td>${b.foot_min.toFixed(2)}–${b.foot_max.toFixed(2)}</td>
+      <td>${/^\d+_steps?$/.test(cls) ? (b.foot_mean / parseInt(cls)).toFixed(2) : '—'}</td>
+      <td>${(b.airborne_mean * 100).toFixed(0)}%</td>
+      <td>${b.foot_all_mean.toFixed(2)}</td>
+      <td>${b.skate_mean.toFixed(2)} <span style="color:var(--muted)">(+${(b.skate_mean / b.foot_mean * 100).toFixed(0)}%)</span></td>
+      <td>${b.path_mean.toFixed(2)}</td>
+    </tr>`).join('');
+
+  $('stats').innerHTML = `
+    <div class="statgrid">${tiles.map(([k, v, s]) =>
+      `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('')}</div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th>classe</th><th>clip</th><th>motion distinte</th><th>sorgenti</th><th>caption</th>
+        <th>sec medi</th>
+        <th>piedi volo: m medi</th><th>mediana</th><th>dev.std</th><th>range</th><th>m/passo</th><th>% in volo</th>
+        <th>tutti i frame</th><th>scivolamento</th><th>pelvis</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+boot();
+</script>
+</body>
+</html>

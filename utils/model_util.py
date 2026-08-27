@@ -38,7 +38,7 @@ def get_model_args(args, data):
     nfeats = 6
     all_goal_joint_names = []
 
-    if args.dataset == 'humanml':
+    if args.dataset in ('humanml', 'custom_dataset'):
         data_rep = 'hml_vec'
         njoints = 263
         nfeats = 1

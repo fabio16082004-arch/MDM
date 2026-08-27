@@ -26,10 +26,13 @@ def main(args=None):
         args = generate_args()
     fixseed(args.seed)
     out_path = args.output_dir
-    n_joints = 22 if args.dataset == 'humanml' else 21
+
+   
+    n_joints = 22 if args.dataset in ('humanml', 'custom_dataset') else 21
+
     name = os.path.basename(os.path.dirname(args.model_path))
     niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
-    max_frames = 196 if args.dataset in ['kit', 'humanml'] else 60
+    max_frames = 196 if args.dataset in ['kit', 'humanml', 'custom_dataset'] else 60
     fps = 12.5 if args.dataset == 'kit' else 20
     n_frames = min(max_frames, int(args.motion_length*fps))
     is_using_data = not any([args.input_text, args.text_prompt, args.action_file, args.action_name])
@@ -45,6 +48,10 @@ def main(args=None):
             out_path += '_' + os.path.basename(args.input_text).replace('.txt', '').replace(' ', '_').replace('.', '')
         elif args.dynamic_text_path != '':
             out_path += '_' + os.path.basename(args.dynamic_text_path).replace('.txt', '').replace(' ', '_').replace('.', '')
+
+    split_for_run = getattr(args, 'split', 'test')
+    if is_using_data:
+        out_path += f'_split-{split_for_run}'
 
     # this block must be called BEFORE the dataset is loaded
     texts = None
@@ -72,6 +79,16 @@ def main(args=None):
             action_text = fr.readlines()
         action_text = [s.replace('\n', '') for s in action_text]
         args.num_samples = len(action_text)
+    elif args.dataset == 'custom_dataset' and getattr(args, 'split', None) is not None:
+        from data_loaders.get_data import get_dataset_loader
+        test_loader = get_dataset_loader(
+            name='custom_dataset', batch_size=1, num_frames=None,
+            split=args.split, device=dist_util.dev(),
+            step_index_path=args.step_index,
+        )
+        test_dataset = test_loader.dataset
+        texts = [test_dataset[i][1] for i in range(len(test_dataset))]
+        args.num_samples = len(texts)
 
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
@@ -122,6 +139,8 @@ def main(args=None):
     all_motions = []
     all_lengths = []
     all_text = []
+    all_guo_features = []
+    all_foot_contacts = []  # <-- NUOVO: canali di foot-contact (259:263) del vettore hml denormalizzato
 
     # add CFG scale to batch
     if args.guidance_param != 1:
@@ -160,10 +179,29 @@ def main(args=None):
         # Recover XYZ *positions* from HumanML3D vector representation
         if model.data_rep == 'hml_vec':
             n_joints = 22 if sample.shape[1] == 263 else 21
-            sample = data.dataset.t2m_dataset.inv_transform(sample.cpu().permute(0, 2, 3, 1)).float()
+            sample = sample.cpu().permute(0, 2, 3, 1).float()
+        
+            if hasattr(data.dataset, 't2m_dataset'):
+                sample = data.dataset.t2m_dataset.inv_transform(sample)
+            elif hasattr(data.dataset, 'inv_transform'):
+                sample = data.dataset.inv_transform(sample)
+
+            # --- NUOVO: salva i canali di foot-contact (259:263) del vettore
+            # hml denormalizzato, PRIMA della conversione in xyz, cosi' si
+            # puo' applicare la stessa logica di count_steps() gia' usata
+            # per validare il train set, anche alle generazioni del modello.
+            all_foot_contacts.append(sample[..., 259:263].cpu().numpy())  # [bs, 1, seqlen, 4]
+
+            # --- NUOVO: salva anche l'INTERO vettore Guo 263-dim denormalizzato,
+            # prima della conversione in XYZ - necessario per TMR (text_motion_sim),
+            # che si aspetta esattamente questo formato, non le posizioni XYZ
+            # gia' ricostruite da recover_from_ric.
+            all_guo_features.append(sample.cpu().numpy())  # [bs, 1, seqlen, 263]
+
             sample = recover_from_ric(sample, n_joints)
             sample = sample.view(-1, *sample.shape[2:]).permute(0, 2, 3, 1)
 
+    
         rot2xyz_pose_rep = 'xyz' if model.data_rep in ['xyz', 'hml_vec'] else model.data_rep
         rot2xyz_mask = None if rot2xyz_pose_rep == 'xyz' else model_kwargs['y']['mask'].reshape(args.batch_size, n_frames).bool()
         sample = model.rot2xyz(x=sample, mask=rot2xyz_mask, pose_rep=rot2xyz_pose_rep, glob=True, translation=True,
@@ -189,15 +227,18 @@ def main(args=None):
     all_motions = all_motions[:total_num_samples]  # [bs, njoints, 6, seqlen]
     all_text = all_text[:total_num_samples]
     all_lengths = np.concatenate(all_lengths, axis=0)[:total_num_samples]
+    all_foot_contacts = np.concatenate(all_foot_contacts, axis=0)[:total_num_samples]  # <-- NUOVO
+    all_guo_features = np.concatenate(all_guo_features, axis=0)[:total_num_samples]  # <-- NUOVO
 
     if os.path.exists(out_path):
         shutil.rmtree(out_path)
     os.makedirs(out_path)
-
     npy_path = os.path.join(out_path, 'results.npy')
     print(f"saving results file to [{npy_path}]")
     np.save(npy_path,
             {'motion': all_motions, 'text': all_text, 'lengths': all_lengths,
+             'foot_contact': all_foot_contacts,  # <-- NUOVO
+             'guo_features': all_guo_features,  # <-- NUOVO
              'num_samples': args.num_samples, 'num_repetitions': args.num_repetitions})
     if args.dynamic_text_path != '':
         text_file_content = '\n'.join(['#'.join(s) for s in all_text])
@@ -207,6 +248,10 @@ def main(args=None):
         fw.write(text_file_content)
     with open(npy_path.replace('.npy', '_len.txt'), 'w') as fw:
         fw.write('\n'.join([str(l) for l in all_lengths]))
+
+    if getattr(args, 'skip_rendering', False):
+        print(f'[Done] raw motions generated in [{out_path}]. Video generations has been skipped.')
+        return out_path
 
     print(f"saving visualizations to [{out_path}]...")
     skeleton = paramUtil.kit_kinematic_chain if args.dataset == 'kit' else paramUtil.t2m_kinematic_chain
@@ -301,12 +346,24 @@ def construct_template_variables(unconstrained):
 
 
 def load_dataset(args, max_frames, n_frames):
+    split = getattr(args, 'split', 'test')
+    if args.dataset == 'custom_dataset':
+        step_index_path = args.step_index
+        mean_std_dir = 'dataset/HumanML3D'
+    else:
+        step_index_path = None
+        mean_std_dir = None
+
     data = get_dataset_loader(name=args.dataset,
                               batch_size=args.batch_size,
                               num_frames=max_frames,
-                              split='test',
-                              hml_mode='train' if args.pred_len > 0 else 'text_only',  # We need to sample a prefix from the dataset
-                              fixed_len=args.pred_len + args.context_len, pred_len=args.pred_len, device=dist_util.dev())
+                              split=split,
+                              hml_mode='train' if args.pred_len > 0 else 'text_only',
+                              fixed_len=args.pred_len + args.context_len,
+                              pred_len=args.pred_len,
+                              device=dist_util.dev(),
+                              step_index_path=step_index_path,
+                              mean_std_dir=mean_std_dir)
     data.fixed_length = n_frames
     return data
 

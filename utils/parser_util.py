@@ -136,10 +136,12 @@ def add_model_options(parser):
 
 def add_data_options(parser):
     group = parser.add_argument_group('dataset')
-    group.add_argument("--dataset", default='humanml', choices=['humanml', 'kit', 'humanact12', 'uestc'], type=str,
+    group.add_argument("--dataset", default='humanml', choices=['humanml', 'kit', 'humanact12', 'uestc', 'custom_dataset'], type=str,
                        help="Dataset name (choose from list).")
     group.add_argument("--data_dir", default="", type=str,
                        help="If empty, will use defaults according to the specified dataset.")
+    group.add_argument("--step_index", type=str, default="",
+                    help="Path to the step_index.json")
 
 
 def add_training_options(parser):
@@ -190,7 +192,7 @@ def add_training_options(parser):
     group.add_argument("--autoregressive_include_prefix", action='store_true', help="If true, include the init prefix in the output, otherwise, will drop it.")
     group.add_argument("--autoregressive_init", default='data', type=str, choices=['data', 'isaac'], 
                         help="Sets the source of the init frames, either from the dataset or isaac init poses.")
-
+    group.add_argument("--fine_tune_path", type=str, help="path of .pt file used in fine-tuning")
 
 def add_sampling_options(parser):
     group = parser.add_argument_group('sampling')
@@ -230,6 +232,10 @@ def add_generate_options(parser):
     group.add_argument("--action_name", default='', type=str,
                        help="An action name to be generated. If empty, will take text prompts from dataset.")
     group.add_argument("--target_joint_names", default='DIMP_FINAL', type=str, help="Force single joint configuration by specifing the joints (coma separated). If None - will use the random mode for all end effectors.")
+    group.add_argument("--skip_rendering", action='store_true',
+                       help="Skip generating mp4 videos and only save raw numpy (.npy) files.")
+    group.add_argument("--split", default='test', choices=['train', 'test', 'val'],
+                       help="Which dataset split to use for generation (default: test).")
 
 
 def add_edit_options(parser):
@@ -269,7 +275,7 @@ def add_evaluation_options(parser):
 def get_cond_mode(args):
     if args.unconstrained:
         cond_mode = 'no_cond'
-    elif args.dataset in ['kit', 'humanml']:
+    elif args.dataset in ['kit', 'humanml', 'custom_dataset']:
         cond_mode = 'text'
     else:
         cond_mode = 'action'
