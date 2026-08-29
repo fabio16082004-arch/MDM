@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'tools'
 ))
 from dataset_index import CONTACT_SLICE
-#from data_loaders.slerp_utilities import build_slerp_tail
+from data_loaders.slerp_utilities import build_slerp_tail, pad_to_uniform_length
 import json
 
 ALLOWED_DIRECTIONS = {'forward'}
@@ -62,13 +62,20 @@ def min_frames_for_class(L, fps=20, min_sec_1=1.0, min_sec_2=1.5, min_sec_multi=
         min_sec = min_sec_multi
     return int(min_sec * fps)
 
+
 class CustomDatasetLoader(Dataset):
     def __init__(self, step_index, hand_written_captions, per_class_count,
-                 seed=42, mean_std_dir=None, donors_split_path=None):
+                 seed=42, mean_std_dir=None, donors_split_path=None,
+                 quiet_reference_path="assets/custom_augmentation/quiet_reference_pose.npy",
+                 quiet_frame_cache_path="assets/custom_augmentation/quiet_frame_cache.json"):
         self.hand_written_captions = hand_written_captions
         self.per_class_count = per_class_count
         self.mean, self.std = load_mean_std(mean_std_dir)
-
+ 
+        self.fallback_reference_frame = np.load(quiet_reference_path)[0].astype(np.float32)
+        with open(quiet_frame_cache_path, encoding='utf-8') as f:
+            self.quiet_frame_cache = json.load(f)
+ 
         if donors_split_path:
             with open(donors_split_path, encoding='utf-8') as f:
                 allowed_donors = {line.strip() for line in f if line.strip()}
@@ -76,7 +83,7 @@ class CustomDatasetLoader(Dataset):
                 L: [e for e in entries if e['donor_path'] in allowed_donors]
                 for L, entries in step_index.items()
             }
-
+ 
         self.step_index = {}
         for L, entries in step_index.items():
             filtered = [e for e in entries if e.get('direction') in ALLOWED_DIRECTIONS]
@@ -86,7 +93,7 @@ class CustomDatasetLoader(Dataset):
                 print(f"[CustomDatasetLoader] class {L}: discarded {n_discarded} "
                       f"non-forward windows (backward/lateral/stationary), "
                       f"{len(filtered)} remaining")
-
+ 
         for L, count in per_class_count.items():
             available = self.step_index.get(str(L), [])
             if len(available) == 0:
@@ -95,45 +102,58 @@ class CustomDatasetLoader(Dataset):
                     f"after the lateral/None filter (requested {count} examples "
                     f"per epoch, but the pool is empty)."
                 )
-
+ 
         rng = random.Random(seed)
         self.idx_to_class = []
         for L, count in per_class_count.items():
             self.idx_to_class += [L] * count
         rng.shuffle(self.idx_to_class)
-
+ 
     def __len__(self):
         return len(self.idx_to_class)
-
+ 
     def inv_transform(self, sample):
         if self.mean is None:
             return sample
         mean = torch.from_numpy(self.mean).to(sample.device).float()
         std = torch.from_numpy(self.std).to(sample.device).float()
         return sample * std + mean
-
+ 
+    def _get_reference_frame(self, donor_path, end_frame, data):
+        quiet_frame_indices = self.quiet_frame_cache.get(donor_path, [])
+        if quiet_frame_indices:
+            closest = min(quiet_frame_indices, key=lambda f: abs(f - end_frame))
+            return data[closest].astype(np.float32)
+        return self.fallback_reference_frame
+ 
     def __getitem__(self, idx):
         target_L = self.idx_to_class[idx]
         candidates = self.step_index[str(target_L)]
-        choice = random.choice(candidates)
+        min_frames = min_frames_for_class(target_L)
 
-        data = np.load(choice['donor_path'])
+        cut_padded = None
+        while cut_padded is None:
+            choice = random.choice(candidates)
+            data = np.load(choice['donor_path'])
 
-        #min_frames = min_frames_for_class(target_L)
+            crop_start, crop_end = sample_random_crop(
+                random, choice['start_frame'], choice['end_frame'],
+                choice['core_start'], choice['core_end'],
+                min_frames=min_frames
+            )
+            cut = data[crop_start:crop_end]
+            reference_frame = self._get_reference_frame(choice['donor_path'], crop_end, data)
+            tail = build_slerp_tail(data, crop_end, reference_frame, class_L=target_L)
+            cut_augmented = np.concatenate([cut, tail], axis=0)
 
-        '''crop_start, crop_end = sample_random_crop(
-            random, choice['start_frame'], choice['end_frame'],
-            choice['core_start'], choice['core_end'],
-            min_frames=min_frames
-        )'''
-        crop_start, crop_end = choice['core_start'], choice['core_end'] + 1
-        cut = data[crop_start:crop_end]
+            cut_padded = pad_to_uniform_length(cut_augmented, reference_frame)
 
-        cut = normalize(cut, self.mean, self.std)
+        cut = normalize(cut_padded, self.mean, self.std)
 
         caption = random.choice(self.hand_written_captions[target_L])
 
         return torch.from_numpy(cut).float(), caption
+ 
 
 
 

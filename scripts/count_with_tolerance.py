@@ -126,6 +126,75 @@ def compute_foot_contact_from_joints(joints, thres):
     return np.concatenate([feet_l, feet_r], axis=1)
 
 
+def detect_cutoff(joints, eps=0.01, min_plateau_frames=15, search_start=0):
+    """
+    Rileva il cutoff (il frame in cui il vero movimento finisce e
+    inizia la chiusura/quiete sintetica) cercando la PRIMA finestra di
+    min_plateau_frames consecutivi in cui la velocita' media del root
+    (posizione XZ) resta sotto la soglia eps.
+
+    Parametri di default CALIBRATI (Punto 4 della metodologia) tramite
+    grid search su un dataset di calibrazione con t_cut noto (build_
+    calibration_dataset.py + calibrate_cutoff_detector.py): MAE=2.66
+    frame, bilanciato tra tutte le classi (2.44-3.01 frame). Sostituiscono
+    la precedente euristica scelta a mano (quiet_check_frames=15,
+    max_quiet_speed=0.02), mai validata e che empiricamente peggiorava
+    le metriche invece di migliorarle.
+
+    Ritorna len(joints) se nessun plateau viene rilevato (nessun
+    arresto, l'intera sequenza viene considerata movimento valido).
+    """
+    T = joints.shape[0]
+    root_xz = joints[:, 0, [0, 2]]  # giunto 0 = root/pelvis, piano XZ
+
+    for start in range(search_start, T - min_plateau_frames):
+        end = start + min_plateau_frames
+        window = root_xz[start:end]
+        speeds = np.linalg.norm(np.diff(window, axis=0), axis=1)
+        avg_speed = speeds.mean() if len(speeds) > 0 else 0.0
+        if avg_speed < eps:
+            return start
+
+    return T
+
+
+def count_steps_with_calibrated_cutoff(joints, foot_contact, length,
+                                        min_horizontal_m=0.15, min_height_m=0.02,
+                                        min_straightness=0.3,
+                                        cutoff_eps=0.01, cutoff_min_plateau=15,
+                                        min_frames_for_analysis=3):
+    """
+    Come count_steps_in_generated_video(), ma limita il conteggio ai
+    frame PRIMA del cutoff stimato con parametri CALIBRATI (Punto 7
+    della metodologia) - i frame nella fase di chiusura/quiete SLERP
+    non vengono considerati nel conteggio dei passi.
+
+    FIX caso limite: se il cutoff stimato e' cosi' precoce che la
+    sequenza troncata risulta troppo corta per essere analizzata
+    (es. il modello genera un movimento gia' quasi fermo fin dai
+    primissimi frame, tipico di checkpoint iniziali/poco addestrati),
+    ritorna 0 passi invece di propagare un IndexError da un array di
+    foot-contact vuoto.
+    """
+    cutoff = detect_cutoff(joints, cutoff_eps, cutoff_min_plateau)
+
+    if cutoff < min_frames_for_analysis:
+        return 0
+
+    joints_truncated = joints[:cutoff]
+    contact_truncated = foot_contact[:max(0, cutoff - 1)]
+    length_truncated = min(length, cutoff)
+
+    if contact_truncated.shape[0] == 0:
+        return 0
+
+    n_steps, _, _ = count_steps_in_generated_video(
+        joints_truncated, contact_truncated, length_truncated,
+        min_horizontal_m, min_height_m, min_straightness
+    )
+    return n_steps
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--results_npy', required=True)
@@ -140,6 +209,13 @@ def main():
                              'motion_process.py (riga 60, alternativa '
                              'esplicita a feet_thre commentata nel codice '
                              'originale del preprocessing HumanML3D).')
+    parser.add_argument('--cutoff_eps', type=float, default=0.01,
+                        help='Soglia di velocità per il rilevamento del cutoff '
+                             '(calibrata tramite grid search, Punto 4 della '
+                             'metodologia: MAE=2.66 frame).')
+    parser.add_argument('--cutoff_min_plateau', type=int, default=15,
+                        help='Frame minimi di plateau per il rilevamento del '
+                             'cutoff (calibrato: 15).')
 
     # Percorso di default impostato dentro ~/TMRPlusPlus/models/...
     default_tmr_path = str(TMR_ROOT / "models" / "tmr_humanml3d_guoh3dfeats")
@@ -307,9 +383,10 @@ def main():
         length_i = int(lengths[i])
         expected_L = expected_classes[i]
 
-        n_steps, _, _ = count_steps_in_generated_video(
+        n_steps = count_steps_with_calibrated_cutoff(
             joints_i, contact_i, length_i,
-            args.min_horizontal_m, args.min_height_m, args.min_straightness
+            args.min_horizontal_m, args.min_height_m, args.min_straightness,
+            cutoff_eps=args.cutoff_eps, cutoff_min_plateau=args.cutoff_min_plateau
         )
         results_by_class[expected_L].append(n_steps - expected_L)
 
