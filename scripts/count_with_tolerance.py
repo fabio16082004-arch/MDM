@@ -63,7 +63,7 @@ def calculate_tmr_matching_score(text_emb, motion_emb):
     """Calcola la similarità coseno media per ogni coppia (testo, movimento generato)."""
     text_norm = text_emb / (np.linalg.norm(text_emb, axis=1, keepdims=True) + 1e-8)
     motion_norm = motion_emb / (np.linalg.norm(motion_emb, axis=1, keepdims=True) + 1e-8)
-    cosine_sim = np.sum(text_norm * motion_norm, axis=1)
+    cosine_sim = (np.sum(text_norm * motion_norm, axis=1) + 1) / 2
     return float(np.mean(cosine_sim))
 
 

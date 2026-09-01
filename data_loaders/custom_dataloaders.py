@@ -159,8 +159,13 @@ class CustomDatasetLoader(Dataset):
 
 class FixedEvalDatasetLoader(Dataset):
     def __init__(self, step_index, hand_written_captions, per_class_count,
-                 seed=123, mean_std_dir=None, donors_split_path=None):
+                 seed=123, mean_std_dir=None, donors_split_path=None,
+                 quiet_reference_path="assets/custom_augmentation/quiet_reference_pose.npy",
+                 quiet_frame_cache_path="assets/custom_augmentation/quiet_frame_cache.json"):
         self.mean, self.std = load_mean_std(mean_std_dir)
+        self.fallback_reference_frame = np.load(quiet_reference_path)[0].astype(np.float32)
+        with open(quiet_frame_cache_path, encoding='utf-8') as f:
+            self.quiet_frame_cache = json.load(f)
         rng = random.Random(seed)
 
         if donors_split_path:
@@ -215,6 +220,13 @@ class FixedEvalDatasetLoader(Dataset):
     def __len__(self):
         return len(self.fixed_items)
 
+    def _get_reference_frame(self, donor_path, end_frame, data):
+        quiet_frame_indices = self.quiet_frame_cache.get(donor_path, [])
+        if quiet_frame_indices:
+            closest = min(quiet_frame_indices, key=lambda f: abs(f - end_frame))
+            return data[closest].astype(np.float32)
+        return self.fallback_reference_frame
+
     def inv_transform(self, sample):
         if self.mean is None:
             return sample
@@ -225,6 +237,16 @@ class FixedEvalDatasetLoader(Dataset):
     def __getitem__(self, idx):
         item = self.fixed_items[idx]
         data = np.load(item['donor_path'])
+
         cut = data[item['start_frame']:item['end_frame']]
-        cut = normalize(cut, self.mean, self.std)
+
+        reference_frame = self._get_reference_frame(item['donor_path'], item['end_frame'], data)
+        tail = build_slerp_tail(data, item['end_frame'], reference_frame, class_L=item['L'])
+        cut_augmented = np.concatenate([cut, tail], axis=0)
+
+        cut_padded = pad_to_uniform_length(cut_augmented, reference_frame)
+        if cut_padded is None:
+            cut_padded = cut_augmented[:UNIFORM_TARGET_LENGTH]
+
+        cut = normalize(cut_padded, self.mean, self.std)
         return torch.from_numpy(cut).float(), item['caption']

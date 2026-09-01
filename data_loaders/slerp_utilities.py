@@ -16,17 +16,9 @@ from utils.rotation_conversions import (
 ROT6D_SLICE = slice(67, 193)
 JOINT_VEL_SLICE = slice(193, 259)
 
-# Durata FISSA della fase di decelerazione (0.5s a 20fps), indipendente
-# dalla classe. In precedenza era differenziata per classe
-# (DECEL_FRAMES_PER_CLASS = {1:8, 2:9, 3:10, 4:12}) sulla base di
-# un'euristica mai validata empiricamente - resa ulteriormente
-# superflua dal padding uniforme (pad_to_uniform_length).
 DECEL_FRAMES_FIXED = 10
 
-# Target di lunghezza totale (crop originale + coda SLERP) a cui tutte
-# le sequenze vengono uniformate - il 90° percentile misurato
-# sull'intero dataset (mediana=66, p90=85, p95=93, max=118).
-UNIFORM_TARGET_LENGTH = 85
+UNIFORM_TARGET_LENGTH = 80
 
 
 def _quaternions_from_frame(frame_vec263):
@@ -128,15 +120,6 @@ def build_slerp_tail(data, end_frame, reference_frame, class_L=None,
                       decel_frames=None, quiet_seconds=0.5, fps=20,
                       noise_std=0.001, use_foot_arc=True, max_lift=0.08,
                       lift_ratio=0.35, lookback=10):
-    """
-    Genera la coda di transizione completa (decelerazione + quiete).
-
-    decel_frames: se None, usa DECEL_FRAMES_FIXED (valore unico,
-        indipendente dalla classe). class_L mantenuto per compatibilita'
-        di interfaccia, ma non influenza piu' la durata.
-    quiet_seconds: default 0.5s, coerente con la durata fisiologica
-        tipica di una fase di doppio appoggio (0.4-0.6s).
-    """
     last_frame = data[end_frame - 1].astype(np.float32)
 
     if decel_frames is None:
@@ -179,17 +162,6 @@ def build_slerp_tail(data, end_frame, reference_frame, class_L=None,
 def pad_to_uniform_length(cut_augmented, reference_frame,
                            target_total_length=UNIFORM_TARGET_LENGTH,
                            noise_std=0.001):
-    """
-    Estende cut_augmented fino a target_total_length, ripetendo la posa
-    di riferimento per i frame aggiuntivi necessari.
-
-    Elimina la correlazione (Pearson r=-0.72) tra il rapporto
-    coda/lunghezza-totale e la classe, che altrimenti sarebbe un
-    segnale scorciatoia sfruttabile dal modello.
-
-    Ritorna None se cut_augmented supera gia' target_total_length
-    (outlier da scartare/ripescare a cura del chiamante).
-    """
     current_length = cut_augmented.shape[0]
 
     if current_length > target_total_length:
