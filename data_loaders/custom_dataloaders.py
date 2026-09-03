@@ -12,8 +12,11 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'tools'
 ))
 from dataset_index import CONTACT_SLICE
-from data_loaders.slerp_utilities import build_slerp_tail, pad_to_uniform_length
 import json
+from data_loaders.slerp_utilities import (
+    build_slerp_tail, build_slerp_head,
+    pad_to_uniform_length_symmetric, UNIFORM_TARGET_LENGTH
+)
 
 ALLOWED_DIRECTIONS = {'forward'}
 
@@ -52,15 +55,8 @@ def sample_random_crop(rng, start_frame, end_frame, core_start, core_end, min_fr
     return crop_start, crop_start + crop_len
 
 
-def min_frames_for_class(L, fps=20, min_sec_1=1.0, min_sec_2=1.5, min_sec_multi=2.0):
-    L = int(L)
-    if L == 1:
-        min_sec = min_sec_1
-    elif L == 2:
-        min_sec = min_sec_2
-    else:
-        min_sec = min_sec_multi
-    return int(min_sec * fps)
+def min_frames_for_class(L, technical_minimum=12):
+    return technical_minimum
 
 
 class CustomDatasetLoader(Dataset):
@@ -142,18 +138,20 @@ class CustomDatasetLoader(Dataset):
                 min_frames=min_frames
             )
             cut = data[crop_start:crop_end]
-            reference_frame = self._get_reference_frame(choice['donor_path'], crop_end, data)
-            tail = build_slerp_tail(data, crop_end, reference_frame, class_L=target_L)
-            cut_augmented = np.concatenate([cut, tail], axis=0)
 
-            cut_padded = pad_to_uniform_length(cut_augmented, reference_frame)
+            reference_frame = self._get_reference_frame(choice['donor_path'], crop_end, data)
+
+            head = build_slerp_head(data, crop_start, reference_frame, class_L=target_L)
+            tail = build_slerp_tail(data, crop_end, reference_frame, class_L=target_L)
+
+            cut_augmented = np.concatenate([head, cut, tail], axis=0)
+            cut_padded = pad_to_uniform_length_symmetric(cut_augmented, reference_frame)
 
         cut = normalize(cut_padded, self.mean, self.std)
-
         caption = random.choice(self.hand_written_captions[target_L])
 
         return torch.from_numpy(cut).float(), caption
- 
+    
 
 
 
@@ -241,10 +239,13 @@ class FixedEvalDatasetLoader(Dataset):
         cut = data[item['start_frame']:item['end_frame']]
 
         reference_frame = self._get_reference_frame(item['donor_path'], item['end_frame'], data)
-        tail = build_slerp_tail(data, item['end_frame'], reference_frame, class_L=item['L'])
-        cut_augmented = np.concatenate([cut, tail], axis=0)
 
-        cut_padded = pad_to_uniform_length(cut_augmented, reference_frame)
+        head = build_slerp_head(data, item['start_frame'], reference_frame, class_L=item['L'])
+        tail = build_slerp_tail(data, item['end_frame'], reference_frame, class_L=item['L'])
+
+        cut_augmented = np.concatenate([head, cut, tail], axis=0)
+
+        cut_padded = pad_to_uniform_length_symmetric(cut_augmented, reference_frame)
         if cut_padded is None:
             cut_padded = cut_augmented[:UNIFORM_TARGET_LENGTH]
 

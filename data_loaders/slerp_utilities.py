@@ -15,10 +15,53 @@ from utils.rotation_conversions import (
 
 ROT6D_SLICE = slice(67, 193)
 JOINT_VEL_SLICE = slice(193, 259)
-
 DECEL_FRAMES_FIXED = 10
 
 UNIFORM_TARGET_LENGTH = 80
+
+def build_slerp_head(data, start_frame, reference_frame, class_L=None,
+                      accel_frames=None, quiet_seconds=0.5, fps=20,
+                      noise_std=0.001, use_foot_arc=True, max_lift=0.08,
+                      lift_ratio=0.35, lookback=10):
+    first_frame = data[start_frame].astype(np.float32)
+
+    if accel_frames is None:
+        accel_frames = DECEL_FRAMES_FIXED
+
+    # FIX: il lookback per identify_lagging_foot guarda AVANTI da
+    # start_frame (start_frame + lookback), non richiede frame precedenti
+    # - ma limitiamo comunque lookback alla lunghezza disponibile nel file.
+    effective_lookback = min(lookback, len(data) - start_frame - 1)
+    leading_foot = None
+    if use_foot_arc and effective_lookback > 1:
+        leading_foot = identify_lagging_foot(data, start_frame + effective_lookback,
+                                              lookback=effective_lookback)
+
+    effective_max_lift = 0.0
+    if leading_foot is not None:
+        effective_max_lift = compute_effective_max_lift(
+            first_frame, reference_frame, leading_foot,
+            max_lift=max_lift, lift_ratio=lift_ratio,
+        )
+
+    quiet_frames = int(quiet_seconds * fps)
+    total_frames = quiet_frames + accel_frames
+    head = np.zeros((total_frames, 263), dtype=np.float32)
+
+    for i in range(quiet_frames):
+        frame = reference_frame.copy()
+        frame[0:3] = 0.0
+        frame[3] = first_frame[3]
+        head[i] = frame
+
+    for i in range(accel_frames):
+        t = 1.0 - (i + 1) / accel_frames
+        head[quiet_frames + i] = interpolate_frame_towards_reference(
+            first_frame, reference_frame, t,
+            lagging_foot=leading_foot, effective_max_lift=effective_max_lift
+        )
+
+    return head
 
 
 def _quaternions_from_frame(frame_vec263):
@@ -120,6 +163,15 @@ def build_slerp_tail(data, end_frame, reference_frame, class_L=None,
                       decel_frames=None, quiet_seconds=0.5, fps=20,
                       noise_std=0.001, use_foot_arc=True, max_lift=0.08,
                       lift_ratio=0.35, lookback=10):
+    """
+    Genera la coda di transizione completa (decelerazione + quiete).
+
+    decel_frames: se None, usa DECEL_FRAMES_FIXED (valore unico,
+        indipendente dalla classe). class_L mantenuto per compatibilita'
+        di interfaccia, ma non influenza piu' la durata.
+    quiet_seconds: default 0.5s, coerente con la durata fisiologica
+        tipica di una fase di doppio appoggio (0.4-0.6s).
+    """
     last_frame = data[end_frame - 1].astype(np.float32)
 
     if decel_frames is None:
@@ -151,9 +203,14 @@ def build_slerp_tail(data, end_frame, reference_frame, class_L=None,
         frame = reference_frame.copy()
         frame[0:3] = 0.0
         frame[3] = last_decel_frame[3]
+
         noise = np.random.normal(0, noise_std, size=frame.shape).astype(frame.dtype)
-        noise[0:3] = 0.0
-        noise[193:259] = 0.0
+        noise[0:3] = 0.0      # velocita' (root)
+        noise[3] = 0.0        # altezza assoluta (root)
+        noise[4:67] = 0.0     # posizioni RIC dei giunti - NESSUN rumore, evita lo slittamento
+        noise[193:259] = 0.0  # velocita' dei giunti
+        noise[259:263] = 0.0  # foot-contact (binario, il rumore lo renderebbe incoerente)
+
         tail[decel_frames + i] = frame + noise
 
     return tail
@@ -172,10 +229,39 @@ def pad_to_uniform_length(cut_augmented, reference_frame,
 
     extra_frames_needed = target_total_length - current_length
     extra_padding = np.tile(reference_frame, (extra_frames_needed, 1)).astype(np.float32)
+    extra_padding[:, 0:3] = 0.0
 
     noise = np.random.normal(0, noise_std, size=extra_padding.shape).astype(extra_padding.dtype)
-    noise[:, 0:3] = 0.0
-    noise[:, 193:259] = 0.0
+    noise[:, 0:3] = 0.0      # velocita' (root)
+    noise[:, 3] = 0.0        # altezza assoluta (root)
+    noise[:, 4:67] = 0.0     # posizioni RIC - NESSUN rumore (stesso fix anti-slittamento)
+    noise[:, 193:259] = 0.0  # velocita' dei giunti
+    noise[:, 259:263] = 0.0  # foot-contact
     extra_padding = extra_padding + noise
 
     return np.concatenate([cut_augmented, extra_padding], axis=0)
+
+
+
+def pad_to_uniform_length_symmetric(cut_augmented, reference_frame,
+                                     target_total_length=UNIFORM_TARGET_LENGTH,
+                                     noise_std=0.001):
+   
+    current_length = cut_augmented.shape[0]
+
+    if current_length > target_total_length:
+        return None
+    if current_length == target_total_length:
+        return cut_augmented
+
+    extra_frames_needed = target_total_length - current_length
+    pad_before = extra_frames_needed // 2
+    pad_after = extra_frames_needed - pad_before
+
+    padding_before = np.tile(reference_frame, (pad_before, 1)).astype(np.float32)
+    padding_before[:, 0:3] = 0.0
+
+    padding_after = np.tile(reference_frame, (pad_after, 1)).astype(np.float32)
+    padding_after[:, 0:3] = 0.0
+
+    return np.concatenate([padding_before, cut_augmented, padding_after], axis=0)
