@@ -1,4 +1,3 @@
-
 import os
 import random
 
@@ -13,10 +12,10 @@ sys.path.insert(0, os.path.join(
 ))
 from dataset_index import CONTACT_SLICE
 import json
-from data_loaders.slerp_utilities import (
-    build_slerp_tail, build_slerp_head,
-    pad_to_uniform_length_symmetric, UNIFORM_TARGET_LENGTH
-)
+from data_loaders.slerp_utilities import build_slerp_tail, UNIFORM_TARGET_LENGTH
+# VERSIONE SENZA SLERP (crop grezzo) attualmente ATTIVA in entrambi i
+# loader qui sotto - import mantenuto solo per compatibilita' futura
+# (nessuna chiamata a build_slerp_tail nel codice attivo).
 
 ALLOWED_DIRECTIONS = {'forward'}
 
@@ -36,6 +35,11 @@ def normalize(cut, mean, std):
 
 
 def sample_random_crop(rng, start_frame, end_frame, core_start, core_end, min_frames=0):
+    """
+    Versione originale: sia crop_start sia crop_end sono scelti
+    casualmente, entro i margini di sicurezza definiti in fase di
+    costruzione dell'indice.
+    """
     safe_len = end_frame - start_frame
     core_len = core_end - core_start + 1
     min_crop_len = max(core_len, min_frames)
@@ -67,11 +71,9 @@ class CustomDatasetLoader(Dataset):
         self.hand_written_captions = hand_written_captions
         self.per_class_count = per_class_count
         self.mean, self.std = load_mean_std(mean_std_dir)
- 
         self.fallback_reference_frame = np.load(quiet_reference_path)[0].astype(np.float32)
         with open(quiet_frame_cache_path, encoding='utf-8') as f:
             self.quiet_frame_cache = json.load(f)
- 
         if donors_split_path:
             with open(donors_split_path, encoding='utf-8') as f:
                 allowed_donors = {line.strip() for line in f if line.strip()}
@@ -79,7 +81,6 @@ class CustomDatasetLoader(Dataset):
                 L: [e for e in entries if e['donor_path'] in allowed_donors]
                 for L, entries in step_index.items()
             }
- 
         self.step_index = {}
         for L, entries in step_index.items():
             filtered = [e for e in entries if e.get('direction') in ALLOWED_DIRECTIONS]
@@ -89,7 +90,6 @@ class CustomDatasetLoader(Dataset):
                 print(f"[CustomDatasetLoader] class {L}: discarded {n_discarded} "
                       f"non-forward windows (backward/lateral/stationary), "
                       f"{len(filtered)} remaining")
- 
         for L, count in per_class_count.items():
             available = self.step_index.get(str(L), [])
             if len(available) == 0:
@@ -98,61 +98,53 @@ class CustomDatasetLoader(Dataset):
                     f"after the lateral/None filter (requested {count} examples "
                     f"per epoch, but the pool is empty)."
                 )
- 
         rng = random.Random(seed)
         self.idx_to_class = []
         for L, count in per_class_count.items():
             self.idx_to_class += [L] * count
         rng.shuffle(self.idx_to_class)
- 
+
     def __len__(self):
         return len(self.idx_to_class)
- 
+
     def inv_transform(self, sample):
         if self.mean is None:
             return sample
         mean = torch.from_numpy(self.mean).to(sample.device).float()
         std = torch.from_numpy(self.std).to(sample.device).float()
         return sample * std + mean
- 
+
     def _get_reference_frame(self, donor_path, end_frame, data):
         quiet_frame_indices = self.quiet_frame_cache.get(donor_path, [])
         if quiet_frame_indices:
             closest = min(quiet_frame_indices, key=lambda f: abs(f - end_frame))
             return data[closest].astype(np.float32)
         return self.fallback_reference_frame
- 
+
     def __getitem__(self, idx):
         target_L = self.idx_to_class[idx]
         candidates = self.step_index[str(target_L)]
         min_frames = min_frames_for_class(target_L)
 
-        cut_padded = None
-        while cut_padded is None:
-            choice = random.choice(candidates)
-            data = np.load(choice['donor_path'])
+        choice = random.choice(candidates)
+        data = np.load(choice['donor_path'])
 
-            crop_start, crop_end = sample_random_crop(
-                random, choice['start_frame'], choice['end_frame'],
-                choice['core_start'], choice['core_end'],
-                min_frames=min_frames
-            )
-            cut = data[crop_start:crop_end]
+        crop_start, crop_end = sample_random_crop(
+            random, choice['start_frame'], choice['end_frame'],
+            choice['core_start'], choice['core_end'],
+            min_frames=min_frames
+        )
+        cut = data[crop_start:crop_end]
 
-            reference_frame = self._get_reference_frame(choice['donor_path'], crop_end, data)
-
-            head = build_slerp_head(data, crop_start, reference_frame, class_L=target_L)
-            tail = build_slerp_tail(data, crop_end, reference_frame, class_L=target_L)
-
-            cut_augmented = np.concatenate([head, cut, tail], axis=0)
-            cut_padded = pad_to_uniform_length_symmetric(cut_augmented, reference_frame)
+        # VERSIONE ATTIVA: crop grezzo, nessuna coda SLERP, nessun
+        # padding - la sequenza ha lunghezza VARIABILE (quella reale
+        # del crop), gestita in training tramite --mask_frames.
+        cut_padded = cut
 
         cut = normalize(cut_padded, self.mean, self.std)
         caption = random.choice(self.hand_written_captions[target_L])
 
         return torch.from_numpy(cut).float(), caption
-    
-
 
 
 class FixedEvalDatasetLoader(Dataset):
@@ -187,7 +179,7 @@ class FixedEvalDatasetLoader(Dataset):
                     f"(val/test) after the lateral/None filter."
                 )
             if len(available) >= count:
-                chosen = rng.sample(available, count)   
+                chosen = rng.sample(available, count)
             else:
                 print(f"[FixedEvalDatasetLoader] class {L}: pool of {len(available)} "
                       f"windows insufficient for {count} requested - some "
@@ -197,7 +189,7 @@ class FixedEvalDatasetLoader(Dataset):
             min_frames = min_frames_for_class(L)
 
             for entry in chosen:
-                caption = rng.choice(hand_written_captions[L])  
+                caption = rng.choice(hand_written_captions[L])
 
                 crop_start, crop_end = sample_random_crop(
                     rng, entry['start_frame'], entry['end_frame'],
@@ -238,16 +230,8 @@ class FixedEvalDatasetLoader(Dataset):
 
         cut = data[item['start_frame']:item['end_frame']]
 
-        reference_frame = self._get_reference_frame(item['donor_path'], item['end_frame'], data)
-
-        head = build_slerp_head(data, item['start_frame'], reference_frame, class_L=item['L'])
-        tail = build_slerp_tail(data, item['end_frame'], reference_frame, class_L=item['L'])
-
-        cut_augmented = np.concatenate([head, cut, tail], axis=0)
-
-        cut_padded = pad_to_uniform_length_symmetric(cut_augmented, reference_frame)
-        if cut_padded is None:
-            cut_padded = cut_augmented[:UNIFORM_TARGET_LENGTH]
+        # VERSIONE ATTIVA: crop grezzo, nessuna coda SLERP, nessun padding.
+        cut_padded = cut
 
         cut = normalize(cut_padded, self.mean, self.std)
         return torch.from_numpy(cut).float(), item['caption']

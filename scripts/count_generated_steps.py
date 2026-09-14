@@ -67,18 +67,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # ============================================================
 
 def find_candidate_step_windows_from_contact(foot_contact):
-    """
-    foot_contact: array (T, 4), stesso layout di CONTACT_SLICE
-                  (colonne 0-1 = piede sinistro, 2-3 = piede destro).
-    Logica IDENTICA a find_candidate_step_windows() dell'originale.
-    """
     contacts = (foot_contact > 0.5).astype(int)
 
     results = []
     pending_liftoff = {'left': None, 'right': None}
+    is_edge_case = {'left': False, 'right': False}
 
     last_left = contacts[0][0] | contacts[0][1]
     last_right = contacts[0][2] | contacts[0][3]
+
+    # FIX: liftoff implicito se il piede è già sollevato al frame 0
+    if last_left == 0:
+        pending_liftoff['left'] = 0
+        is_edge_case['left'] = True
+    if last_right == 0:
+        pending_liftoff['right'] = 0
+        is_edge_case['right'] = True
 
     for t in range(1, len(contacts)):
         step_left = contacts[t][0] | contacts[t][1]
@@ -86,15 +90,25 @@ def find_candidate_step_windows_from_contact(foot_contact):
 
         if last_left == 1 and step_left == 0:
             pending_liftoff['left'] = t
+            is_edge_case['left'] = False
         if last_left == 0 and step_left == 1 and pending_liftoff['left'] is not None:
-            results.append({'foot': 'left', 'liftoff': pending_liftoff['left'], 'touchdown': t})
+            results.append({
+                'foot': 'left', 'liftoff': pending_liftoff['left'], 'touchdown': t,
+                'is_edge_case': is_edge_case['left']
+            })
             pending_liftoff['left'] = None
+            is_edge_case['left'] = False
 
         if last_right == 1 and step_right == 0:
             pending_liftoff['right'] = t
+            is_edge_case['right'] = False
         if last_right == 0 and step_right == 1 and pending_liftoff['right'] is not None:
-            results.append({'foot': 'right', 'liftoff': pending_liftoff['right'], 'touchdown': t})
+            results.append({
+                'foot': 'right', 'liftoff': pending_liftoff['right'], 'touchdown': t,
+                'is_edge_case': is_edge_case['right']
+            })
             pending_liftoff['right'] = None
+            is_edge_case['right'] = False
 
         last_left, last_right = step_left, step_right
 
@@ -103,21 +117,23 @@ def find_candidate_step_windows_from_contact(foot_contact):
 
 
 def get_validated_timeline_from_precomputed(joints, foot_contact, min_horizontal_m, min_height_m):
-    """
-    Equivalente di get_validated_step_timeline() dell'originale, ma
-    partendo da joints e foot_contact GIA' calcolati (non da data grezzo).
-    Usa is_step_valid() importata TALE E QUALE dall'originale.
-    """
     candidates = find_candidate_step_windows_from_contact(foot_contact)
     for c in candidates:
-        c['valid'] = is_step_valid(
-            joints=joints,
-            liftoff=c['liftoff'],
-            touchdown=c['touchdown'],
-            foot=c['foot'],
-            min_horizontal_m=min_horizontal_m,
-            min_height_m=min_height_m,
-        )
+        if c.get('is_edge_case', False):
+            # Passo "di bordo": il liftoff e' avvenuto prima dell'inizio
+            # osservabile, quindi la distanza calcolata sarebbe
+            # artificialmente sottostimata (si parte da meta' movimento).
+            # Verifica SOLO l'altezza, saltando il controllo di distanza.
+            c['valid'] = is_step_valid(
+                joints=joints, liftoff=c['liftoff'], touchdown=c['touchdown'],
+                foot=c['foot'], min_horizontal_m=0.0,  # nessuna soglia minima
+                min_height_m=min_height_m,
+            )
+        else:
+            c['valid'] = is_step_valid(
+                joints=joints, liftoff=c['liftoff'], touchdown=c['touchdown'],
+                foot=c['foot'], min_horizontal_m=min_horizontal_m, min_height_m=min_height_m,
+            )
     return candidates
 
 

@@ -39,7 +39,7 @@ from render_guofeats_multi import raw_joints_to_render_joints
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data_loaders.custom_dataloaders import FixedEvalDatasetLoader
-from data_loaders.slerp_utilities import build_slerp_tail, pad_to_uniform_length, UNIFORM_TARGET_LENGTH
+from data_loaders.slerp_utilities import build_slerp_tail, build_slerp_head, UNIFORM_TARGET_LENGTH
 from count_with_tolerance import compute_foot_contact_from_joints, count_steps_with_calibrated_cutoff
 
 
@@ -205,19 +205,13 @@ def load_generated_joints_for_rendering(results_npy_path, idx):
 
 
 def load_ground_truth_joints(fixed_loader, idx):
+    # VERSIONE ATTIVA: crop grezzo, nessuna coda/testa SLERP - coerente
+    # con la configurazione v38 (senza SLERP).
     item = fixed_loader.fixed_items[idx]
     data = np.load(item['donor_path'])
 
     cut = data[item['start_frame']:item['end_frame']]
-
-    reference_frame = fixed_loader._get_reference_frame(item['donor_path'], item['end_frame'], data)
-
-    tail = build_slerp_tail(data, item['end_frame'], reference_frame, class_L=item['L'])
-    cut_augmented = np.concatenate([cut, tail], axis=0)
-
-    cut_padded = pad_to_uniform_length(cut_augmented, reference_frame)
-    if cut_padded is None:
-        cut_padded = cut_augmented[:UNIFORM_TARGET_LENGTH]
+    cut_padded = cut
 
     joints = guofeats_to_joints(torch.from_numpy(cut_padded.astype(np.float32))).numpy()
     return joints, item['caption'], item['L']
