@@ -43,11 +43,11 @@ the model and its `args.json`, which stores the training configuration
 (including `--slerp_mode`). **Extract each archive into its own folder inside
 `save/`**, so that the model and its `args.json` stay together:
 
-| Archive | `--slerp_mode` | Steps | |
-|---|---|---|---|
+| Archive | `--slerp_mode` | Steps |
+|---|---|---|
 | `tail_v37_35k.zip` | `tail` | 35k |
 | `none_v38_35k.zip` | `none` | 35k |
-| `head_tail_v39_20k.zip` | `head_tail` | |
+| `head_tail_v39_20k.zip` | `head_tail` | 20K |
 
 ```bash
 unzip tail_v37_35k.zip      -d save/my_finetuning_v37_random_crop_adaptive_tail_30k/
