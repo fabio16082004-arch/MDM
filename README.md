@@ -12,7 +12,7 @@ original MDM code is covered in [Based on MDM](#based-on-mdm).
 - The MDM Python/PyTorch/CUDA environment described in
   [`environment.yml`](environment.yml), the HumanML3D dataset, and its
   normalization files `Mean.npy` and `Std.npy` in `dataset/HumanML3D/`.
-- The HumanML3D checkpoint `humanml_trans_enc_512/model000475000.pt`.
+- The HumanML3D checkpoint `humanml_trans_enc_512/model000475000.pt`, that **must be saved in a directory called 'save'** in the root of the project.
   The pretrained checkpoint is linked in the [upstream
   instructions](https://github.com/GuyTevet/motion-diffusion-model#3-download-the-pretrained-models). Place the model
   files in `save/humanml_trans_enc_512/`.
@@ -32,6 +32,36 @@ Activate the MDM environment and run commands from the repository root. For
 evaluation, also activate an environment compatible with TMR and the Guo
 bundle. See [`guo_evaluator_bundle/README.md`](guo_evaluator_bundle/README.md)
 for bundle installation details and input requirements.
+
+### Downloads (GitHub Releases)
+
+Large files are not stored in the repository; they are attached to the
+[Releases](../../releases) page.
+
+**Fine-tuned checkpoints** (release `v1.0-checkpoints`). Each archive contains
+the model and its `args.json`, which stores the training configuration
+(including `--slerp_mode`). **Extract each archive into its own folder inside
+`save/`**, so that the model and its `args.json` stay together:
+
+| Archive | `--slerp_mode` | Steps | |
+|---|---|---|---|
+| `tail_v37_35k.zip` | `tail` | 35k |
+| `none_v38_35k.zip` | `none` | 35k |
+| `head_tail_v39_20k.zip` | `head_tail` | |
+
+```bash
+unzip tail_v37_35k.zip      -d save/my_finetuning_v37_random_crop_adaptive_tail_30k/
+unzip none_v38_35k.zip      -d save/my_finetuning_v38_no_slerp_baseline/
+unzip head_tail_v39_20k.zip -d save/my_finetuning_v39_headtail_adaptive/
+```
+
+**Donor motion files** (release `v1.0-data`). `videos_full.zip` contains the
+`videos/<N>_step/<ID>.npy` plus `.mp4` previews. Extract it in the
+repository root:
+
+```bash
+unzip videos_full.zip
+```
 
 ### 1. Prepare the splits
 
