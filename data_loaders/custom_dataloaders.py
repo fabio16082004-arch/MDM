@@ -12,12 +12,33 @@ sys.path.insert(0, os.path.join(
 ))
 from dataset_index import CONTACT_SLICE
 import json
-from data_loaders.slerp_utilities import build_slerp_tail, UNIFORM_TARGET_LENGTH
-# VERSIONE SENZA SLERP (crop grezzo) attualmente ATTIVA in entrambi i
-# loader qui sotto - import mantenuto solo per compatibilita' futura
-# (nessuna chiamata a build_slerp_tail nel codice attivo).
+from data_loaders.slerp_utilities import build_slerp_tail, build_slerp_head, UNIFORM_TARGET_LENGTH
 
 ALLOWED_DIRECTIONS = {'forward'}
+
+SLERP_MODES = ('none', 'tail', 'head_tail')
+
+
+def check_slerp_mode(mode):
+    assert mode in SLERP_MODES, f"slerp_mode non valido: {mode!r} (ammessi: {SLERP_MODES})"
+    return mode
+
+
+def extend_sequence(data, cut, crop_start, crop_end, reference_frame, L, mode):
+    if mode == 'none':
+        return cut
+    if mode == 'tail':
+        budget = max(1, UNIFORM_TARGET_LENGTH - cut.shape[0])
+        tail = build_slerp_tail(data, crop_end, reference_frame, class_L=L,
+                                total_tail_frames=budget)
+        return np.concatenate([cut, tail], axis=0)
+    total_extra = max(2, UNIFORM_TARGET_LENGTH - cut.shape[0])
+    head_budget = total_extra // 2
+    head = build_slerp_head(data, crop_start, reference_frame, class_L=L,
+                            total_head_frames=head_budget)
+    tail = build_slerp_tail(data, crop_end, reference_frame, class_L=L,
+                            total_tail_frames=total_extra - head_budget)
+    return np.concatenate([head, cut, tail], axis=0)
 
 
 def load_mean_std(mean_std_dir):
@@ -35,11 +56,6 @@ def normalize(cut, mean, std):
 
 
 def sample_random_crop(rng, start_frame, end_frame, core_start, core_end, min_frames=0):
-    """
-    Versione originale: sia crop_start sia crop_end sono scelti
-    casualmente, entro i margini di sicurezza definiti in fase di
-    costruzione dell'indice.
-    """
     safe_len = end_frame - start_frame
     core_len = core_end - core_start + 1
     min_crop_len = max(core_len, min_frames)
@@ -67,7 +83,10 @@ class CustomDatasetLoader(Dataset):
     def __init__(self, step_index, hand_written_captions, per_class_count,
                  seed=42, mean_std_dir=None, donors_split_path=None,
                  quiet_reference_path="assets/custom_augmentation/quiet_reference_pose.npy",
-                 quiet_frame_cache_path="assets/custom_augmentation/quiet_frame_cache.json"):
+                 quiet_frame_cache_path="assets/custom_augmentation/quiet_frame_cache.json",
+                 slerp_mode='tail'):
+        self.slerp_mode = check_slerp_mode(slerp_mode)
+        print(f"[CustomDatasetLoader] slerp_mode = {self.slerp_mode}")
         self.hand_written_captions = hand_written_captions
         self.per_class_count = per_class_count
         self.mean, self.std = load_mean_std(mean_std_dir)
@@ -136,10 +155,10 @@ class CustomDatasetLoader(Dataset):
         )
         cut = data[crop_start:crop_end]
 
-        # VERSIONE ATTIVA: crop grezzo, nessuna coda SLERP, nessun
-        # padding - la sequenza ha lunghezza VARIABILE (quella reale
-        # del crop), gestita in training tramite --mask_frames.
-        cut_padded = cut
+        reference_frame = self._get_reference_frame(choice['donor_path'], crop_end, data)
+
+        cut_padded = extend_sequence(data, cut, crop_start, crop_end,
+                                     reference_frame, target_L, self.slerp_mode)
 
         cut = normalize(cut_padded, self.mean, self.std)
         caption = random.choice(self.hand_written_captions[target_L])
@@ -151,7 +170,10 @@ class FixedEvalDatasetLoader(Dataset):
     def __init__(self, step_index, hand_written_captions, per_class_count,
                  seed=123, mean_std_dir=None, donors_split_path=None,
                  quiet_reference_path="assets/custom_augmentation/quiet_reference_pose.npy",
-                 quiet_frame_cache_path="assets/custom_augmentation/quiet_frame_cache.json"):
+                 quiet_frame_cache_path="assets/custom_augmentation/quiet_frame_cache.json",
+                 slerp_mode='tail'):
+        self.slerp_mode = check_slerp_mode(slerp_mode)
+        print(f"[FixedEvalDatasetLoader] slerp_mode = {self.slerp_mode}")
         self.mean, self.std = load_mean_std(mean_std_dir)
         self.fallback_reference_frame = np.load(quiet_reference_path)[0].astype(np.float32)
         with open(quiet_frame_cache_path, encoding='utf-8') as f:
@@ -230,8 +252,10 @@ class FixedEvalDatasetLoader(Dataset):
 
         cut = data[item['start_frame']:item['end_frame']]
 
-        # VERSIONE ATTIVA: crop grezzo, nessuna coda SLERP, nessun padding.
-        cut_padded = cut
+        reference_frame = self._get_reference_frame(item['donor_path'], item['end_frame'], data)
+
+        cut_padded = extend_sequence(data, cut, item['start_frame'], item['end_frame'],
+                                     reference_frame, item['L'], self.slerp_mode)
 
         cut = normalize(cut_padded, self.mean, self.std)
         return torch.from_numpy(cut).float(), item['caption']

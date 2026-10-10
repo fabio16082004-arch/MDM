@@ -85,6 +85,7 @@ def main(args=None):
             name='custom_dataset', batch_size=1, num_frames=None,
             split=args.split, device=dist_util.dev(),
             step_index_path=args.step_index,
+            slerp_mode=args.slerp_mode
         )
         test_dataset = test_loader.dataset
         texts = [test_dataset[i][1] for i in range(len(test_dataset))]
@@ -363,7 +364,8 @@ def load_dataset(args, max_frames, n_frames):
                               pred_len=args.pred_len,
                               device=dist_util.dev(),
                               step_index_path=step_index_path,
-                              mean_std_dir=mean_std_dir)
+                              mean_std_dir=mean_std_dir,
+                              shuffle=(args.dataset != 'custom_dataset'))
     data.fixed_length = n_frames
     return data
 

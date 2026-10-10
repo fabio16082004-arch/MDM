@@ -142,6 +142,8 @@ def add_data_options(parser):
                        help="If empty, will use defaults according to the specified dataset.")
     group.add_argument("--step_index", type=str, default="",
                     help="Path to the step_index.json")
+    group.add_argument("--slerp_mode", default='tail', choices=['none', 'tail', 'head_tail'], type=str,
+                   help="Come uniformare la lunghezza: none (masking), tail, head_tail.")
 
 
 def add_training_options(parser):

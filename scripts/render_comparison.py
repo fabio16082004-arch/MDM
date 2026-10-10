@@ -1,24 +1,4 @@
 #!/usr/bin/env python
-"""
-Script di rendering comparativo, da lanciare al termine di una
-generazione: per ciascun esempio nel results.npy, produce un unico
-video MP4 con affiancati orizzontalmente:
-  1) il video GENERATO dal checkpoint corrente
-  2) la GROUND TRUTH corrispondente
-  3) (se --baseline_results_npy e' fornito) il video dello stesso
-     esempio al checkpoint 0k
-
-Nel titolo del pannello "generato" viene inserito il numero di passi
-rilevato dalla metrica corrente (count_steps_with_calibrated_cutoff).
-
-USO (dalla ROOT del progetto):
-    python scripts/render_comparison.py \
-        --results_npy save/my_run/samples_test_40000_split-test/results.npy \
-        --step_index splits/step_index.json --split test \
-        --outdir scripts/render_comparison_40k \
-        [--baseline_results_npy save/my_run/samples_test_0_split-test/results.npy] \
-        [--n_examples 20]
-"""
 import argparse
 import json
 import os
@@ -177,13 +157,6 @@ def render_side_by_side(panels, output, fps=20.0):
 
 
 def load_generated_joints(results_npy_path, idx):
-    """
-    Convenzione ORIGINALE (X, Y_up, Z_depth) - IDENTICA a quella usata
-    da count_with_tolerance.py. Usata per il CONTEGGIO, cosi' il numero
-    di passi rilevato qui combacia esattamente con quello del file
-    principale (foot-contact dai giunti + validazione geometrica +
-    troncamento calibrato).
-    """
     raw = np.load(results_npy_path, allow_pickle=True).item()
     motion = raw['motion']
     lengths = raw['lengths']
@@ -192,26 +165,38 @@ def load_generated_joints(results_npy_path, idx):
     return joints[:length], length
 
 
-def load_generated_joints_for_rendering(results_npy_path, idx):
-    """
-    Come load_generated_joints, ma con gli assi riordinati (X, -Z_depth,
-    Y_up) tramite raw_joints_to_render_joints - necessario SOLO per il
-    rendering visivo (altrimenti lo scheletro appare sdraiato invece
-    che in piedi). MAI usare questa versione per il conteggio.
-    """
-    joints, length = load_generated_joints(results_npy_path, idx)
+def load_generated_joints_for_rendering(results_npy_path, idx, length_override=None):
+    if length_override is None:
+        joints, length = load_generated_joints(results_npy_path, idx)
+    else:
+        raw = np.load(results_npy_path, allow_pickle=True).item()
+        joints = raw['motion'][idx].transpose(2, 0, 1)[:length_override]
     joints_for_render = raw_joints_to_render_joints(joints)
-    return joints_for_render, length
+    return joints_for_render, len(joints)
 
 
-def load_ground_truth_joints(fixed_loader, idx):
-    # VERSIONE ATTIVA: crop grezzo, nessuna coda/testa SLERP - coerente
-    # con la configurazione v38 (senza SLERP).
+def load_ground_truth_joints(fixed_loader, idx, no_slerp=False):
+    # VERSIONE ATTIVA: testa+coda SLERP simmetrica adattiva, coerente
+    # con la configurazione v39.
     item = fixed_loader.fixed_items[idx]
     data = np.load(item['donor_path'])
 
     cut = data[item['start_frame']:item['end_frame']]
-    cut_padded = cut
+    if no_slerp:
+        joints = guofeats_to_joints(torch.from_numpy(cut.astype(np.float32))).numpy()
+        return joints, item['caption'], item['L']
+
+    reference_frame = fixed_loader._get_reference_frame(item['donor_path'], item['end_frame'], data)
+
+    total_extra = max(2, UNIFORM_TARGET_LENGTH - cut.shape[0])
+    head_budget = total_extra // 2
+    tail_budget = total_extra - head_budget
+
+    head = build_slerp_head(data, item['start_frame'], reference_frame, class_L=item['L'],
+                             total_head_frames=head_budget)
+    tail = build_slerp_tail(data, item['end_frame'], reference_frame, class_L=item['L'],
+                             total_tail_frames=tail_budget)
+    cut_padded = np.concatenate([head, cut, tail], axis=0)
 
     joints = guofeats_to_joints(torch.from_numpy(cut_padded.astype(np.float32))).numpy()
     return joints, item['caption'], item['L']
@@ -221,10 +206,27 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--results_npy', required=True)
     parser.add_argument('--baseline_results_npy', default=None)
+    parser.add_argument('--generated_label', default='GENERATO')
+    parser.add_argument('--baseline_label', default='CHECKPOINT 0k')
+    parser.add_argument('--ground_truth_no_slerp', action='store_true',
+                        help='Render the original variable-length test crop without SLERP augmentation.')
+    parser.add_argument('--ground_truth_slerp_tail', action='store_true',
+                        help='Append the standard SLERP deceleration/quiet tail to a custom raw crop.')
+    parser.add_argument('--ground_truth_npy', default=None,
+                        help='Raw Guo-feature .npy file to use as a custom ground-truth crop.')
+    parser.add_argument('--ground_truth_start', type=int, default=None)
+    parser.add_argument('--ground_truth_end', type=int, default=None,
+                        help='Exclusive end frame for --ground_truth_npy.')
+    parser.add_argument('--ground_truth_caption', default=None)
+    parser.add_argument('--ground_truth_class', type=int, default=None)
+    parser.add_argument('--match_test_length', action='store_true',
+                        help='Trim generated and baseline panels to the original test crop length.')
     parser.add_argument('--step_index', required=True)
     parser.add_argument('--split', default='test')
     parser.add_argument('--outdir', required=True)
     parser.add_argument('--n_examples', type=int, default=None)
+    parser.add_argument('--sample_indices', default=None,
+                        help='Indici specifici, separati da virgola, da renderizzare (es. 61).')
     parser.add_argument('--min_horizontal_m', type=float, default=0.15)
     parser.add_argument('--min_height_m', type=float, default=0.02)
     parser.add_argument('--min_straightness', type=float, default=0.3)
@@ -233,6 +235,10 @@ def main():
     parser.add_argument('--cutoff_min_plateau', type=int, default=15)
     parser.add_argument('--fps', type=float, default=20.0)
     args = parser.parse_args()
+
+    custom_ground_truth = args.ground_truth_npy is not None
+    if custom_ground_truth and (args.ground_truth_start is None or args.ground_truth_end is None):
+        parser.error('--ground_truth_npy requires --ground_truth_start and --ground_truth_end')
 
     os.makedirs(args.outdir, exist_ok=True)
 
@@ -252,14 +258,47 @@ def main():
     raw_gen = np.load(args.results_npy, allow_pickle=True).item()
     n_total = raw_gen['motion'].shape[0]
     n_examples = args.n_examples or n_total
+    if args.sample_indices:
+        sample_indices = [int(value.strip()) for value in args.sample_indices.split(',')
+                          if value.strip()]
+    else:
+        sample_indices = list(range(min(n_examples, n_total, len(fixed_loader.fixed_items))))
 
     print(f"Totale esempi disponibili: {n_total}, ne renderizzo "
-          f"{min(n_examples, n_total, len(fixed_loader.fixed_items))}")
+          f"{len(sample_indices)}")
 
-    for idx in range(min(n_examples, n_total, len(fixed_loader.fixed_items))):
+    for idx in sample_indices:
+        if idx < 0 or idx >= min(n_total, len(fixed_loader.fixed_items)):
+            raise IndexError(f"sample index {idx} fuori dai limiti dei risultati/test set")
         # Conteggio: SEMPRE con la convenzione originale (identica a
         # count_with_tolerance.py), MAI con quella riordinata per il render.
+        if custom_ground_truth:
+            ground_truth_data = np.load(args.ground_truth_npy)
+            ground_truth_crop = ground_truth_data[args.ground_truth_start:args.ground_truth_end]
+            if args.ground_truth_slerp_tail:
+                reference_frame = fixed_loader._get_reference_frame(
+                    args.ground_truth_npy, args.ground_truth_end, ground_truth_data
+                )
+                tail = build_slerp_tail(
+                    ground_truth_data, args.ground_truth_end, reference_frame,
+                    class_L=args.ground_truth_class,
+                )
+                ground_truth_crop = np.concatenate([ground_truth_crop, tail], axis=0)
+            gt_joints = guofeats_to_joints(
+                torch.from_numpy(ground_truth_crop.astype(np.float32))
+            ).numpy()
+            gt_caption = args.ground_truth_caption or raw_gen['text'][idx]
+            gt_L = args.ground_truth_class or 0
+        else:
+            gt_joints, gt_caption, gt_L = load_ground_truth_joints(
+                fixed_loader, idx, no_slerp=args.ground_truth_no_slerp
+            )
+        target_length = len(gt_joints) if args.match_test_length else None
+
         gen_joints_count, gen_length = load_generated_joints(args.results_npy, idx)
+        if target_length is not None:
+            gen_joints_count = gen_joints_count[:target_length]
+            gen_length = min(gen_length, target_length)
         contact_i = compute_foot_contact_from_joints(gen_joints_count, args.foot_detect_thres)
         n_steps = count_steps_with_calibrated_cutoff(
             gen_joints_count, contact_i, gen_length,
@@ -269,20 +308,27 @@ def main():
 
         # Rendering: versione con assi riordinati, SOLO per la visualizzazione.
         gen_joints_render, _ = load_generated_joints_for_rendering(args.results_npy, idx)
+        if target_length is not None:
+            gen_joints_render = gen_joints_render[:target_length]
 
         caption_gen = raw_gen['text'][idx] if idx < len(raw_gen['text']) else ""
-        gen_title = f"GENERATO\n{caption_gen}\npassi rilevati: {n_steps}"
+        gen_title = (
+            f"{args.generated_label}\n{caption_gen}\npassi rilevati: {n_steps}"
+            if args.generated_label else f"{caption_gen}\npassi rilevati: {n_steps}"
+        )
 
         panels = [{'joints': gen_joints_render, 'title': gen_title}]
 
-        gt_joints, gt_caption, gt_L = load_ground_truth_joints(fixed_loader, idx)
         panels.append({'joints': gt_joints, 'title': f"GROUND TRUTH\n{gt_caption}"})
 
         if args.baseline_results_npy and os.path.exists(args.baseline_results_npy):
             baseline_raw = np.load(args.baseline_results_npy, allow_pickle=True).item()
             if idx < baseline_raw['motion'].shape[0]:
-                baseline_joints, _ = load_generated_joints_for_rendering(args.baseline_results_npy, idx)
-                panels.append({'joints': baseline_joints, 'title': "CHECKPOINT 0k"})
+                baseline_joints, _ = load_generated_joints_for_rendering(
+                    args.baseline_results_npy, idx,
+                    length_override=target_length,
+                )
+                panels.append({'joints': baseline_joints, 'title': args.baseline_label})
 
         out_path = os.path.join(args.outdir, f"comparison_{idx:03d}.mp4")
         print(f"[{idx+1}] {out_path} — passi rilevati: {n_steps}, classe attesa: {gt_L}")

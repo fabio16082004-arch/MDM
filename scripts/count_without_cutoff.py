@@ -1,14 +1,4 @@
 #!/usr/bin/env python
-"""
-VERSIONE SENZA CUTOFF di count_with_tolerance.py: conta i passi
-validati geometricamente (foot-contact + distanza percorsa) su TUTTA
-la sequenza generata, SENZA alcuna esclusione temporale della coda
-SLERP - risponde alla domanda "quanti passi conterei se non applicassi
-alcun troncamento".
-
-NON modifica ne' sostituisce l'originale count_with_tolerance.py
-(quello con il cutoff calibrato).
-"""
 import argparse
 import json
 import os
@@ -44,11 +34,10 @@ try:
     import src.prepare  # noqa
 except ImportError as e:
     raise ImportError(
-        f"Impossibile importare TMR da {TMR_ROOT}. "
-        "Verifica che la cartella ~/TMRPlusPlus esista."
+        f"Could not import TMR from {TMR_ROOT}. "
+        "Make sure the ~/TMRPlusPlus directory exists."
     ) from e
 
-# Bundle autonomo del valutatore Guo (pesi t2m/text_mot_match, GloVe, spaCy)
 GUO_ROOT = MDM_ROOT / "guo_evaluator_bundle"
 
 if str(GUO_ROOT) not in sys.path:
@@ -58,18 +47,16 @@ try:
     from guo import GuoEvaluator, evaluate_guo
 except ImportError as e:
     raise ImportError(
-        f"Impossibile importare il valutatore Guo da {GUO_ROOT}."
+        f"Could not import the Guo evaluator from {GUO_ROOT}."
     ) from e
 
-# Cache di token word/POS prodotta da scripts/build_guo_token_cache.py: l'env
-# `mdm` e' su Python 3.7 e non puo' caricare il modello spaCy 3.8 del bundle.
 GUO_TOKEN_CACHE = MDM_ROOT / "assets" / "guo_caption_tokens.json"
 
 
 def load_guo_tokens(texts):
     if not GUO_TOKEN_CACHE.exists():
         raise SystemExit(
-            f"Cache dei token Guo mancante ({GUO_TOKEN_CACHE}). Generala con:\n"
+            f"Guo token cache not found ({GUO_TOKEN_CACHE}). Generate it with:\n"
             "  conda activate TMR && python scripts/build_guo_token_cache.py"
         )
     with open(GUO_TOKEN_CACHE, encoding='utf-8') as f:
@@ -78,8 +65,8 @@ def load_guo_tokens(texts):
     missing = sorted({t for t in texts if t not in cache})
     if missing:
         raise SystemExit(
-            f"{len(missing)} caption non presenti nella cache dei token Guo "
-            f"(es. {missing[0]!r}). Rigenera la cache con:\n"
+            f"{len(missing)} captions are missing from the Guo token cache "
+            f"(e.g. {missing[0]!r}). Regenerate the cache with:\n"
             "  conda activate TMR && python scripts/build_guo_token_cache.py "
             "--results_npy <results.npy>"
         )
@@ -182,6 +169,7 @@ def main():
     loader = get_dataset_loader(
         name='custom_dataset', batch_size=1, num_frames=None,
         split=args.split, device='cpu', step_index_path=args.step_index,
+        shuffle=False,
     )
     dataset = loader.dataset
     expected_per_sample = [int(dataset.fixed_items[i]['L']) for i in range(len(dataset))]
@@ -194,17 +182,17 @@ def main():
     num_repetitions = raw['num_repetitions']
 
     if 'guo_features' not in raw:
-        raise SystemExit("Il file results.npy non contiene 'guo_features'.")
+        raise SystemExit("The results.npy file does not contain 'guo_features'.")
     guo_features = raw['guo_features']
 
     if len(expected_per_sample) != num_samples:
-        raise SystemExit(f"Mismatch: {len(expected_per_sample)} classi attese vs "
-                         f"num_samples={num_samples} nel results.npy")
+        raise SystemExit(f"Mismatch: {len(expected_per_sample)} expected classes vs "
+                         f"num_samples={num_samples} in results.npy")
 
     expected_classes = expected_per_sample * num_repetitions
     bs = motion.shape[0]
 
-    print(f"\nCaricamento TMR da: {args.tmr_path} su dispositivo: {args.device}...")
+    print(f"\nLoading TMR from: {args.tmr_path} on device: {args.device}...")
     original_cwd = os.getcwd()
     os.chdir(str(TMR_ROOT))
 
@@ -228,7 +216,7 @@ def main():
         gt_motion = item[0] if isinstance(item, (list, tuple)) else item['motion']
         gt_motions_list.append(gt_motion)
 
-    print("Estrazione embedding latenti con TMR in corso...")
+    print("Extracting latent embeddings with TMR...")
     with torch.inference_mode():
         text_x_dict = collate_x_dict(text_model(texts))
         text_x_dict = move_x_dict_to_device(text_x_dict, args.device)
@@ -256,8 +244,8 @@ def main():
         gt_x_dict = move_x_dict_to_device(gt_x_dict, args.device)
         z_gt = tmr.encode(gt_x_dict, sample_mean=True).cpu().numpy()
 
-    # Conteggio SENZA CUTOFF: su TUTTA la sequenza (crop + coda SLERP
-    # inclusa), nessuna esclusione temporale.
+    # Count without cutoff over the entire sequence (including crop and SLERP
+    # tail); do not exclude any time intervals.
     for i in range(bs):
         joints_i = motion[i].transpose(2, 0, 1)
         contact_i = compute_foot_contact_from_joints(joints_i, args.foot_detect_thres)
@@ -275,8 +263,8 @@ def main():
     fid_score = calculate_fid(z_gen, z_gt)
     tmr_score = calculate_tmr_matching_score(z_text, z_gen)
 
-    # Calcolo Metriche Guo (matching score + FID sugli embedding a 512 dim)
-    print("\nEstrazione embedding con il valutatore Guo in corso...")
+    # Compute Guo metrics (matching score and FID on 512-dimensional embeddings)
+    print("\nExtracting embeddings with the Guo evaluator...")
     gen_guo = [guo_features[i].squeeze(0)[:int(lengths[i])].astype(np.float32)
                for i in range(bs)]
     gt_guo = [(m.numpy() if torch.is_tensor(m) else np.asarray(m)).astype(np.float32)
@@ -289,9 +277,9 @@ def main():
     )
 
     print("\n" + "=" * 80)
-    print("[VERSIONE SENZA CUTOFF - conteggio grezzo su tutta la sequenza]")
-    print(f"{'Classe':<8} {'N video':<9} {'Esatto':<10} {'±1 passo':<11} "
-          f"{'Errore >=2':<12} {'Esatto+/-1 (cumulativo)'}")
+    print("[NO-CUTOFF VERSION - raw count over the entire sequence]")
+    print(f"{'Class':<8} {'N videos':<9} {'Exact':<10} {'±1 step':<11} "
+          f"{'Error >=2':<12} {'Exact+/-1 (cumulative)'}")
     print("-" * 80)
 
     tot_exact, tot_off1, tot_off_more, tot_n = 0, 0, 0, 0
@@ -318,25 +306,25 @@ def main():
         tot_n += n
 
     print("-" * 80)
-    print(f"{'TOTALE':<8} {tot_n:<9} "
+    print(f"{'TOTAL':<8} {tot_n:<9} "
           f"{100.0*tot_exact/tot_n:>6.1f}%   "
           f"{100.0*tot_off1/tot_n:>7.1f}%   "
           f"{100.0*tot_off_more/tot_n:>8.1f}%    "
           f"{100.0*(tot_exact+tot_off1)/tot_n:>6.1f}%")
 
     print("\n" + "=" * 62)
-    print("                    METRICHE QUALITÀ                          ")
+    print("                    QUALITY METRICS                           ")
     print("=" * 62)
-    print(f" TMR Matching Score (Cosine Sim, piu' alto e' meglio) : {tmr_score:.4f}")
-    print(f" TMR-FID (Fréchet Distance, piu' basso e' meglio)     : {fid_score:.4f}")
+    print(f" TMR Matching Score (Cosine similarity, higher is better): {tmr_score:.4f}")
+    print(f" TMR-FID (Fréchet distance, lower is better)             : {fid_score:.4f}")
     print("-" * 62)
-    print(f" Guo Matching Score (dist. euclidea, piu' basso e' meglio) : "
+    print(f" Guo Matching Score (Euclidean distance, lower is better) : "
           f"{guo_results['matching_score']:.4f}")
-    print(f" Guo-FID (piu' basso e' meglio)                            : "
+    print(f" Guo-FID (lower is better)                                 : "
           f"{guo_results['fid']:.4f}")
-    print(f" Clip Guo: {guo_results['n_generated']} generate, "
-          f"{guo_results['n_reference']} GT, "
-          f"{guo_results['n_matching']} usate per il matching "
+    print(f" Guo clips: {guo_results['n_generated']} generated, "
+          f"{guo_results['n_reference']} reference, "
+          f"{guo_results['n_matching']} used for matching "
           f"(pool={guo_pool})")
     print("=" * 62)
 

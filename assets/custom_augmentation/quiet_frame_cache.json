@@ -1,0 +1,1065 @@
+{
+  "videos/1_step/000930.npy": [
+    5
+  ],
+  "videos/1_step/005858.npy": [
+    5,
+    25,
+    75
+  ],
+  "videos/1_step/009536.npy": [
+    95,
+    115,
+    135
+  ],
+  "videos/1_step/M000930.npy": [
+    5,
+    145
+  ],
+  "videos/1_step/M005858.npy": [
+    5,
+    25,
+    75
+  ],
+  "videos/1_step/M009536.npy": [
+    85,
+    105,
+    125,
+    145
+  ],
+  "videos/2_step/002498.npy": [],
+  "videos/2_step/004735.npy": [
+    10,
+    30,
+    50,
+    165
+  ],
+  "videos/2_step/004832.npy": [
+    5,
+    90,
+    110
+  ],
+  "videos/2_step/006698.npy": [
+    55
+  ],
+  "videos/2_step/007385.npy": [
+    5,
+    25,
+    120,
+    140
+  ],
+  "videos/2_step/012254.npy": [
+    5,
+    25
+  ],
+  "videos/2_step/M002498.npy": [],
+  "videos/2_step/M004735.npy": [
+    10,
+    30,
+    50,
+    150,
+    170
+  ],
+  "videos/2_step/M004832.npy": [
+    5,
+    90,
+    110
+  ],
+  "videos/2_step/M006698.npy": [
+    55
+  ],
+  "videos/2_step/M007385.npy": [
+    5,
+    25,
+    120,
+    140
+  ],
+  "videos/2_step/M012254.npy": [
+    5,
+    25
+  ],
+  "videos/3_step/004680.npy": [
+    5,
+    25,
+    110
+  ],
+  "videos/3_step/005241.npy": [
+    5,
+    120
+  ],
+  "videos/3_step/011416.npy": [
+    5,
+    25,
+    125
+  ],
+  "videos/3_step/M004680.npy": [
+    5,
+    25,
+    110
+  ],
+  "videos/3_step/M005241.npy": [
+    5,
+    120
+  ],
+  "videos/3_step/M011416.npy": [
+    5,
+    25,
+    125
+  ],
+  "videos/4_step/000203.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/000857.npy": [
+    5,
+    65
+  ],
+  "videos/4_step/000879.npy": [
+    5,
+    25,
+    95
+  ],
+  "videos/4_step/001081.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/4_step/001120.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/4_step/001544.npy": [
+    5,
+    75,
+    95
+  ],
+  "videos/4_step/001552.npy": [
+    5,
+    85
+  ],
+  "videos/4_step/002099.npy": [
+    5,
+    80
+  ],
+  "videos/4_step/002304.npy": [
+    5,
+    100
+  ],
+  "videos/4_step/002340.npy": [],
+  "videos/4_step/002530.npy": [
+    5,
+    25,
+    90
+  ],
+  "videos/4_step/002559.npy": [
+    5,
+    25,
+    110
+  ],
+  "videos/4_step/002777.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/002842.npy": [
+    5,
+    25,
+    95
+  ],
+  "videos/4_step/003089.npy": [
+    5
+  ],
+  "videos/4_step/003187.npy": [],
+  "videos/4_step/003327.npy": [
+    5,
+    95
+  ],
+  "videos/4_step/003538.npy": [
+    5,
+    95
+  ],
+  "videos/4_step/003684.npy": [
+    5,
+    25,
+    105
+  ],
+  "videos/4_step/003982.npy": [
+    5,
+    25,
+    45,
+    140
+  ],
+  "videos/4_step/004207.npy": [
+    5,
+    80
+  ],
+  "videos/4_step/004491.npy": [
+    5,
+    110
+  ],
+  "videos/4_step/004698.npy": [
+    5,
+    75
+  ],
+  "videos/4_step/004847.npy": [
+    5,
+    25
+  ],
+  "videos/4_step/005679.npy": [
+    5,
+    25,
+    75,
+    120,
+    160
+  ],
+  "videos/4_step/006093.npy": [
+    85
+  ],
+  "videos/4_step/006529.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/4_step/006561.npy": [
+    5,
+    25,
+    100,
+    120
+  ],
+  "videos/4_step/006609.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/007407.npy": [
+    5,
+    100
+  ],
+  "videos/4_step/008071.npy": [
+    5
+  ],
+  "videos/4_step/008077.npy": [
+    5,
+    75
+  ],
+  "videos/4_step/008134.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/008427.npy": [
+    5,
+    75
+  ],
+  "videos/4_step/009516.npy": [
+    70
+  ],
+  "videos/4_step/010021.npy": [
+    5,
+    25,
+    115
+  ],
+  "videos/4_step/011084.npy": [
+    65
+  ],
+  "videos/4_step/011344.npy": [
+    5,
+    95
+  ],
+  "videos/4_step/011463.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/4_step/012180.npy": [
+    5,
+    80
+  ],
+  "videos/4_step/012313.npy": [
+    5,
+    85
+  ],
+  "videos/4_step/012830.npy": [
+    5,
+    70
+  ],
+  "videos/4_step/012930.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/013091.npy": [
+    5,
+    25,
+    95
+  ],
+  "videos/4_step/013403.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/013438.npy": [
+    5,
+    85
+  ],
+  "videos/4_step/013775.npy": [],
+  "videos/4_step/013823.npy": [
+    5,
+    80
+  ],
+  "videos/4_step/M000203.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/M000857.npy": [
+    5,
+    65
+  ],
+  "videos/4_step/M000879.npy": [
+    5,
+    25,
+    95
+  ],
+  "videos/4_step/M001081.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/4_step/M001120.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/4_step/M001544.npy": [
+    5,
+    75,
+    95
+  ],
+  "videos/4_step/M001552.npy": [
+    5,
+    85
+  ],
+  "videos/4_step/M002099.npy": [
+    5,
+    80
+  ],
+  "videos/4_step/M002304.npy": [
+    5,
+    100
+  ],
+  "videos/4_step/M002340.npy": [],
+  "videos/4_step/M002530.npy": [
+    5,
+    25,
+    90
+  ],
+  "videos/4_step/M002559.npy": [
+    5,
+    25,
+    110
+  ],
+  "videos/4_step/M002777.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/M002842.npy": [
+    5,
+    25,
+    95
+  ],
+  "videos/4_step/M003089.npy": [
+    5
+  ],
+  "videos/4_step/M003187.npy": [],
+  "videos/4_step/M003327.npy": [
+    5,
+    95
+  ],
+  "videos/4_step/M003538.npy": [
+    5,
+    95
+  ],
+  "videos/4_step/M003684.npy": [
+    5,
+    25,
+    105
+  ],
+  "videos/4_step/M003982.npy": [
+    5,
+    25,
+    45,
+    140
+  ],
+  "videos/4_step/M004207.npy": [
+    5,
+    80
+  ],
+  "videos/4_step/M004491.npy": [
+    5,
+    110
+  ],
+  "videos/4_step/M004698.npy": [
+    5,
+    75
+  ],
+  "videos/4_step/M004847.npy": [
+    5,
+    25
+  ],
+  "videos/4_step/M005679.npy": [
+    5,
+    25,
+    75,
+    120,
+    160
+  ],
+  "videos/4_step/M006093.npy": [
+    85
+  ],
+  "videos/4_step/M006529.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/4_step/M006561.npy": [
+    5,
+    25,
+    100,
+    120
+  ],
+  "videos/4_step/M006609.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/M006846.npy": [
+    5
+  ],
+  "videos/4_step/M007407.npy": [
+    5,
+    100
+  ],
+  "videos/4_step/M008071.npy": [
+    5
+  ],
+  "videos/4_step/M008077.npy": [
+    5,
+    75
+  ],
+  "videos/4_step/M008134.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/M008427.npy": [
+    5,
+    75
+  ],
+  "videos/4_step/M009516.npy": [
+    70
+  ],
+  "videos/4_step/M010021.npy": [
+    5,
+    25,
+    115
+  ],
+  "videos/4_step/M011084.npy": [
+    65
+  ],
+  "videos/4_step/M011344.npy": [
+    5,
+    95
+  ],
+  "videos/4_step/M011463.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/4_step/M012180.npy": [
+    5,
+    80
+  ],
+  "videos/4_step/M012313.npy": [
+    5,
+    85
+  ],
+  "videos/4_step/M012830.npy": [
+    5,
+    70
+  ],
+  "videos/4_step/M012930.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/M013091.npy": [
+    5,
+    25,
+    95
+  ],
+  "videos/4_step/M013403.npy": [
+    5,
+    90
+  ],
+  "videos/4_step/M013438.npy": [
+    5,
+    85
+  ],
+  "videos/4_step/M013775.npy": [],
+  "videos/4_step/M013823.npy": [
+    5,
+    80
+  ],
+  "videos/5_step/000322.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/5_step/000484.npy": [
+    5,
+    115
+  ],
+  "videos/5_step/000537.npy": [
+    5
+  ],
+  "videos/5_step/001167.npy": [
+    5,
+    25,
+    125,
+    145
+  ],
+  "videos/5_step/001168.npy": [
+    5,
+    25,
+    125
+  ],
+  "videos/5_step/001597.npy": [
+    5,
+    90,
+    110
+  ],
+  "videos/5_step/001932.npy": [
+    5,
+    25,
+    125
+  ],
+  "videos/5_step/002789.npy": [
+    5,
+    135,
+    155
+  ],
+  "videos/5_step/003037.npy": [
+    5,
+    85
+  ],
+  "videos/5_step/003445.npy": [
+    5,
+    90
+  ],
+  "videos/5_step/003631.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/5_step/003645.npy": [
+    5,
+    90
+  ],
+  "videos/5_step/003966.npy": [
+    5,
+    100
+  ],
+  "videos/5_step/004133.npy": [
+    5,
+    25,
+    105
+  ],
+  "videos/5_step/004770.npy": [
+    5,
+    25,
+    105
+  ],
+  "videos/5_step/006046.npy": [],
+  "videos/5_step/006066.npy": [
+    5,
+    85
+  ],
+  "videos/5_step/006083.npy": [
+    5,
+    25,
+    125
+  ],
+  "videos/5_step/006651.npy": [
+    5,
+    25,
+    45,
+    150
+  ],
+  "videos/5_step/007309.npy": [
+    5,
+    25,
+    125,
+    145,
+    165
+  ],
+  "videos/5_step/007474.npy": [
+    5,
+    75
+  ],
+  "videos/5_step/007606.npy": [
+    5,
+    25,
+    115
+  ],
+  "videos/5_step/008046.npy": [
+    65
+  ],
+  "videos/5_step/008056.npy": [],
+  "videos/5_step/008731.npy": [
+    5,
+    75
+  ],
+  "videos/5_step/008973.npy": [
+    5,
+    90,
+    110
+  ],
+  "videos/5_step/009502.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/5_step/009574.npy": [
+    5,
+    80
+  ],
+  "videos/5_step/009807.npy": [
+    65
+  ],
+  "videos/5_step/009862.npy": [
+    5,
+    80
+  ],
+  "videos/5_step/010834.npy": [
+    5,
+    80
+  ],
+  "videos/5_step/011664.npy": [
+    5,
+    25,
+    105
+  ],
+  "videos/5_step/011876.npy": [
+    5
+  ],
+  "videos/5_step/012069.npy": [
+    5,
+    25,
+    45,
+    130,
+    150
+  ],
+  "videos/5_step/012203.npy": [
+    5
+  ],
+  "videos/5_step/012528.npy": [
+    5,
+    25,
+    95
+  ],
+  "videos/5_step/012694.npy": [
+    5,
+    25,
+    150,
+    170
+  ],
+  "videos/5_step/012870.npy": [
+    5,
+    25,
+    45,
+    140
+  ],
+  "videos/5_step/013136.npy": [
+    5,
+    80
+  ],
+  "videos/5_step/013390.npy": [
+    5,
+    25
+  ],
+  "videos/5_step/013413.npy": [
+    5,
+    85
+  ],
+  "videos/5_step/013808.npy": [
+    5,
+    110
+  ],
+  "videos/5_step/014120.npy": [
+    5,
+    90
+  ],
+  "videos/5_step/014357.npy": [
+    5,
+    25
+  ],
+  "videos/5_step/M000322.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/5_step/M000484.npy": [
+    5,
+    115
+  ],
+  "videos/5_step/M000537.npy": [
+    5
+  ],
+  "videos/5_step/M001167.npy": [
+    5,
+    25,
+    125,
+    145
+  ],
+  "videos/5_step/M001168.npy": [
+    5,
+    25,
+    125
+  ],
+  "videos/5_step/M001597.npy": [
+    5,
+    90,
+    110
+  ],
+  "videos/5_step/M001932.npy": [
+    5,
+    25,
+    125
+  ],
+  "videos/5_step/M002789.npy": [
+    5,
+    135,
+    155
+  ],
+  "videos/5_step/M003037.npy": [
+    5,
+    85
+  ],
+  "videos/5_step/M003445.npy": [
+    5,
+    90
+  ],
+  "videos/5_step/M003510.npy": [
+    5,
+    25,
+    45,
+    110,
+    130
+  ],
+  "videos/5_step/M003631.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/5_step/M003645.npy": [
+    5,
+    90
+  ],
+  "videos/5_step/M003966.npy": [
+    5,
+    100
+  ],
+  "videos/5_step/M004133.npy": [
+    5,
+    25,
+    105
+  ],
+  "videos/5_step/M004770.npy": [
+    5,
+    25,
+    105
+  ],
+  "videos/5_step/M006046.npy": [],
+  "videos/5_step/M006066.npy": [
+    5,
+    85
+  ],
+  "videos/5_step/M006083.npy": [
+    5,
+    25,
+    125
+  ],
+  "videos/5_step/M006651.npy": [
+    5,
+    25,
+    45,
+    150
+  ],
+  "videos/5_step/M007309.npy": [
+    5,
+    25,
+    125,
+    145,
+    165
+  ],
+  "videos/5_step/M007474.npy": [
+    5,
+    75
+  ],
+  "videos/5_step/M007606.npy": [
+    5,
+    25,
+    120
+  ],
+  "videos/5_step/M008046.npy": [
+    65
+  ],
+  "videos/5_step/M008056.npy": [],
+  "videos/5_step/M008731.npy": [
+    5,
+    75
+  ],
+  "videos/5_step/M008973.npy": [
+    5,
+    90,
+    110
+  ],
+  "videos/5_step/M009502.npy": [
+    5,
+    25,
+    100
+  ],
+  "videos/5_step/M009574.npy": [
+    5,
+    80
+  ],
+  "videos/5_step/M009807.npy": [
+    65
+  ],
+  "videos/5_step/M009862.npy": [
+    5,
+    80
+  ],
+  "videos/5_step/M010834.npy": [
+    5,
+    80
+  ],
+  "videos/5_step/M011664.npy": [
+    5,
+    25,
+    105
+  ],
+  "videos/5_step/M011876.npy": [
+    5
+  ],
+  "videos/5_step/M012069.npy": [
+    5,
+    25,
+    45,
+    130,
+    150
+  ],
+  "videos/5_step/M012203.npy": [
+    5
+  ],
+  "videos/5_step/M012528.npy": [
+    5,
+    25,
+    95
+  ],
+  "videos/5_step/M012694.npy": [
+    5,
+    25,
+    150,
+    170
+  ],
+  "videos/5_step/M012870.npy": [
+    5,
+    25,
+    45,
+    140
+  ],
+  "videos/5_step/M013136.npy": [
+    5,
+    80
+  ],
+  "videos/5_step/M013390.npy": [
+    5,
+    25
+  ],
+  "videos/5_step/M013413.npy": [
+    5,
+    85
+  ],
+  "videos/5_step/M013808.npy": [
+    5,
+    110
+  ],
+  "videos/5_step/M014120.npy": [
+    5,
+    90
+  ],
+  "videos/5_step/M014357.npy": [
+    5,
+    25
+  ],
+  "videos/6_step/000774.npy": [
+    85
+  ],
+  "videos/6_step/002215.npy": [
+    5,
+    100
+  ],
+  "videos/6_step/002320.npy": [
+    5,
+    115
+  ],
+  "videos/6_step/004287.npy": [
+    5,
+    100
+  ],
+  "videos/6_step/005232.npy": [
+    5
+  ],
+  "videos/6_step/005462.npy": [],
+  "videos/6_step/006174.npy": [
+    5
+  ],
+  "videos/6_step/006222.npy": [],
+  "videos/6_step/009161.npy": [
+    5,
+    25
+  ],
+  "videos/6_step/009760.npy": [],
+  "videos/6_step/011342.npy": [
+    5,
+    25,
+    120,
+    140
+  ],
+  "videos/6_step/012634.npy": [
+    5,
+    25,
+    140
+  ],
+  "videos/6_step/013196.npy": [
+    5,
+    25,
+    130
+  ],
+  "videos/6_step/013205.npy": [],
+  "videos/6_step/M000774.npy": [
+    85
+  ],
+  "videos/6_step/M002215.npy": [
+    5,
+    100
+  ],
+  "videos/6_step/M002320.npy": [
+    5,
+    115
+  ],
+  "videos/6_step/M004287.npy": [
+    5,
+    100
+  ],
+  "videos/6_step/M005232.npy": [
+    5
+  ],
+  "videos/6_step/M005462.npy": [],
+  "videos/6_step/M006174.npy": [
+    5
+  ],
+  "videos/6_step/M006222.npy": [],
+  "videos/6_step/M009161.npy": [
+    5,
+    25
+  ],
+  "videos/6_step/M009760.npy": [],
+  "videos/6_step/M011342.npy": [
+    5,
+    25,
+    120,
+    140
+  ],
+  "videos/6_step/M012634.npy": [
+    5,
+    25,
+    140
+  ],
+  "videos/6_step/M013196.npy": [
+    5,
+    25,
+    130
+  ],
+  "videos/6_step/M013205.npy": [],
+  "videos/7_step/000939.npy": [
+    5,
+    25,
+    115
+  ],
+  "videos/7_step/003224.npy": [],
+  "videos/7_step/005556.npy": [
+    5,
+    25,
+    45,
+    65
+  ],
+  "videos/7_step/006733.npy": [],
+  "videos/7_step/008625.npy": [
+    5
+  ],
+  "videos/7_step/009093.npy": [],
+  "videos/7_step/009361.npy": [
+    5,
+    25,
+    140,
+    160,
+    180
+  ],
+  "videos/7_step/010433.npy": [
+    5
+  ],
+  "videos/7_step/012835.npy": [],
+  "videos/7_step/M000939.npy": [
+    5,
+    25,
+    115
+  ],
+  "videos/7_step/M003224.npy": [],
+  "videos/7_step/M005556.npy": [
+    5,
+    25,
+    45,
+    65
+  ],
+  "videos/7_step/M006733.npy": [],
+  "videos/7_step/M008625.npy": [
+    5
+  ],
+  "videos/7_step/M009093.npy": [],
+  "videos/7_step/M009361.npy": [
+    5,
+    25,
+    140,
+    160,
+    180
+  ],
+  "videos/7_step/M010433.npy": [
+    5
+  ],
+  "videos/7_step/M012835.npy": [],
+  "videos/8_step/006824.npy": [
+    5
+  ],
+  "videos/8_step/010262.npy": [
+    5,
+    115
+  ],
+  "videos/8_step/M006824.npy": [
+    5
+  ],
+  "videos/8_step/M010262.npy": [
+    5,
+    115
+  ],
+  "videos/9_step/011229.npy": [
+    5
+  ],
+  "videos/9_step/M011229.npy": [
+    5
+  ]
+}

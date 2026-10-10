@@ -52,7 +52,7 @@ def get_collate_fn(name, hml_mode='train', pred_len=0, batch_size=1, num_frames=
 
 def get_dataset(name, num_frames, split='train', hml_mode='train', abs_path='.', fixed_len=0, 
                 device=None, autoregressive=False, cache_path=None, custom_data_dir = "",
-                step_index_path=None, mean_std_dir=None):
+                step_index_path=None, mean_std_dir=None, slerp_mode='tail'):
     if name in ["humanml", "kit"]:
         DATA = get_dataset_class(name)
         dataset = DATA(split=split, num_frames=num_frames, mode=hml_mode, abs_path=abs_path, fixed_len=fixed_len, 
@@ -74,12 +74,14 @@ def get_dataset(name, num_frames, split='train', hml_mode='train', abs_path='.',
             dataset = CustomDatasetLoader(step_index, hand_written_captions,
                                           CUSTOM_TRAIN_PER_CLASS_COUNT, seed=42,
                                           mean_std_dir=mean_std_dir,
-                                          donors_split_path=donors_split_path)
+                                          donors_split_path=donors_split_path,
+                                          slerp_mode=slerp_mode)
         else:  # val/test
             dataset = FixedEvalDatasetLoader(step_index, hand_written_captions,
                                              CUSTOM_EVAL_PER_CLASS_COUNT, seed=123,
                                              mean_std_dir=mean_std_dir,
-                                             donors_split_path=donors_split_path)
+                                             donors_split_path=donors_split_path,
+                                             slerp_mode=slerp_mode)
     else:
         raise ValueError(f'Unsupported dataset name [{name}]')
     return dataset
@@ -87,10 +89,12 @@ def get_dataset(name, num_frames, split='train', hml_mode='train', abs_path='.',
 
 def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='train', fixed_len=0, pred_len=0, 
                        device=None, autoregressive=False, custom_data_dir="",
-                       step_index_path=None, mean_std_dir=None):
+                       step_index_path=None, mean_std_dir=None, shuffle=True,
+                       slerp_mode='tail'):
     dataset = get_dataset(name, num_frames, split=split, hml_mode=hml_mode, fixed_len=fixed_len, 
                 device=device, autoregressive=autoregressive, custom_data_dir=custom_data_dir,
-                step_index_path=step_index_path, mean_std_dir=mean_std_dir)
+                step_index_path=step_index_path, mean_std_dir=mean_std_dir,
+                slerp_mode=slerp_mode)
     
     collate = get_collate_fn(name, hml_mode, pred_len, batch_size, num_frames=num_frames)
 
@@ -106,7 +110,7 @@ def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='tr
 
 
     loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True,
+        dataset, batch_size=batch_size, shuffle=shuffle,
         num_workers=8, drop_last=(split == 'train'), collate_fn=collate
     )
 

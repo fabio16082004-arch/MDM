@@ -46,6 +46,7 @@ def main():
                               device=dist_util.dev(),
                               split='train',
                               step_index_path=args.step_index,
+                              slerp_mode=args.slerp_mode,
                               mean_std_dir='dataset/HumanML3D')
 
     x = next(iter((data)))

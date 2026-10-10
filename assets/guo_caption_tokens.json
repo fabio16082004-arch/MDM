@@ -1,0 +1,206 @@
+{
+  "a man walks 1 step.": [
+    "a/DET",
+    "man/NOUN",
+    "walk/VERB",
+    "step/NOUN"
+  ],
+  "a man walks 2 steps.": [
+    "a/DET",
+    "man/NOUN",
+    "walk/VERB",
+    "step/NOUN"
+  ],
+  "a man walks 3 steps.": [
+    "a/DET",
+    "man/NOUN",
+    "walk/VERB",
+    "step/NOUN"
+  ],
+  "a man walks 4 steps.": [
+    "a/DET",
+    "man/NOUN",
+    "walk/VERB",
+    "step/NOUN"
+  ],
+  "a person moves, taking 2 steps.": [
+    "a/DET",
+    "person/NOUN",
+    "move/VERB",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "a person moves, taking 3 steps.": [
+    "a/DET",
+    "person/NOUN",
+    "move/VERB",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "a person moves, taking four steps.": [
+    "a/DET",
+    "person/NOUN",
+    "move/VERB",
+    "take/VERB",
+    "four/NUM",
+    "step/NOUN"
+  ],
+  "a person moves, taking one step.": [
+    "a/DET",
+    "person/NOUN",
+    "move/VERB",
+    "take/VERB",
+    "one/NUM",
+    "step/NOUN"
+  ],
+  "a person steps four steps.": [
+    "a/DET",
+    "person/NOUN",
+    "step/VERB",
+    "four/NUM",
+    "step/NOUN"
+  ],
+  "a person steps one step.": [
+    "a/DET",
+    "person/NOUN",
+    "step/VERB",
+    "one/NUM",
+    "step/NOUN"
+  ],
+  "a person steps three steps.": [
+    "a/DET",
+    "person/NOUN",
+    "step/VERB",
+    "three/NUM",
+    "step/NOUN"
+  ],
+  "a person steps two steps.": [
+    "a/DET",
+    "person/NOUN",
+    "step/VERB",
+    "two/NUM",
+    "step/NOUN"
+  ],
+  "a person takes 2 steps.": [
+    "a/DET",
+    "person/NOUN",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "a person takes 4 steps.": [
+    "a/DET",
+    "person/NOUN",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "a person takes one step.": [
+    "a/DET",
+    "person/NOUN",
+    "take/VERB",
+    "one/NUM",
+    "step/NOUN"
+  ],
+  "a person takes three steps.": [
+    "a/DET",
+    "person/NOUN",
+    "take/VERB",
+    "three/NUM",
+    "step/NOUN"
+  ],
+  "someone takes 1 step.": [
+    "someone/PRON",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "someone takes 2 steps.": [
+    "someone/PRON",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "someone takes 3 steps.": [
+    "someone/PRON",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "someone takes 4 steps.": [
+    "someone/PRON",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "someone walks 2 steps.": [
+    "someone/PRON",
+    "walk/VERB",
+    "step/NOUN"
+  ],
+  "someone walks 3 steps.": [
+    "someone/PRON",
+    "walk/VERB",
+    "step/NOUN"
+  ],
+  "someone walks four steps.": [
+    "someone/PRON",
+    "walk/VERB",
+    "four/NUM",
+    "step/NOUN"
+  ],
+  "someone walks one step.": [
+    "someone/PRON",
+    "walk/VERB",
+    "one/NUM",
+    "step/NOUN"
+  ],
+  "the figure walks four steps.": [
+    "the/DET",
+    "figure/NOUN",
+    "walk/VERB",
+    "four/NUM",
+    "step/NOUN"
+  ],
+  "the figure walks one step.": [
+    "the/DET",
+    "figure/NOUN",
+    "walk/VERB",
+    "one/NUM",
+    "step/NOUN"
+  ],
+  "the figure walks three steps.": [
+    "the/DET",
+    "figure/NOUN",
+    "walk/VERB",
+    "three/NUM",
+    "step/NOUN"
+  ],
+  "the figure walks two steps.": [
+    "the/DET",
+    "figure/NOUN",
+    "walk/VERB",
+    "two/NUM",
+    "step/NOUN"
+  ],
+  "the man takes 3 steps.": [
+    "the/DET",
+    "man/NOUN",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "the man takes 4 steps.": [
+    "the/DET",
+    "man/NOUN",
+    "take/VERB",
+    "step/NOUN"
+  ],
+  "the man takes one step.": [
+    "the/DET",
+    "man/NOUN",
+    "take/VERB",
+    "one/NUM",
+    "step/NOUN"
+  ],
+  "the man takes two steps.": [
+    "the/DET",
+    "man/NOUN",
+    "take/VERB",
+    "two/NUM",
+    "step/NOUN"
+  ]
+}
